@@ -1,0 +1,181 @@
+body {
+  display: flex;
+  flex-direction: column;
+  width: 100dvw;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+vr {
+  width: 2px;
+  height: 80%;
+  background-color: var(--bg-3);
+}
+
+input {
+  margin: 2px !important;
+  padding: 2px 4px !important;
+}
+input[type="number"] {
+  width: 100px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+}
+
+.tippy-content {
+  display: flex;
+  flex-direction: column;
+}
+
+#hello div.list {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin: 5px 0px;
+}
+.project {
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  border-radius: 0.5rem;
+  background-color: var(--bg-2);
+}
+.project .small {
+  font-size: 80%;
+  color: var(--text-2);
+}
+.project button {
+  border: none;
+  background-color: var(--bg-3);
+}
+
+nav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  height: 62px;
+}
+nav div {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+#currentcolors {
+  flex-direction: column;
+  justify-content: center;
+}
+#currentcolors input {
+  padding: 0px !important;
+  margin: 0px !important;
+}
+
+#colors {
+  --colors-size: 20px;
+  --colors-columns: 7;
+  --colors-rows: 3;
+  gap: 1px;
+  max-width: calc(var(--colors-size) * var(--colors-columns) + 1px * var(--colors-columns) + 8px);
+  max-height: calc(var(--colors-size) * var(--colors-rows) + 1px * var(--colors-rows));
+  overflow: hidden auto;
+}
+#colors button {
+  width: var(--colors-size);
+  height: var(--colors-size);
+  margin: 0px;
+  padding: 0px;
+  border: none;
+  border-radius: 5px;
+  background-color: var(--color);
+}
+#colors button:hover {
+  background-color: var(--color);
+}
+
+main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+#area {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  border-top-right-radius: 1rem;
+  overflow: hidden;
+}
+#transforms {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: repeating-conic-gradient(var(--bg-2) 0 25%, var(--bg-0) 0 50%) 0 / 25px 25px;
+}
+#transforms > * {
+  position: absolute;
+  inset: 0px;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+#transforms > canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+#layers {
+  display: flex;
+  flex-direction: column;
+  width: 20dvw;
+  height: calc(90dvh - 62px);
+  margin: 5px;
+  padding: 10px;
+  border-radius: 1rem;
+  background-color: var(--bg-2);
+  box-sizing: border-box;
+}
+#layers .list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#layers .bar {
+  display: flex;
+}
+#layers .bar h2 {
+  flex: 1;
+}
+#layers .bar > button {
+  font-size: 125%;
+  border: none;
+}
+#layers .list div {
+  display: flex;
+  border-radius: 0.5rem;
+}
+#layers .list div[selected] {
+  background-color: var(--bg-1);
+}
+#layers .list button {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  border: none;
+}
+#layers .list div button:nth-child(1) {
+  flex: 1;
+}
+#layers .list div button:nth-child(2) {
+  opacity: 0;
+}
+#layers .list div:hover button:nth-child(2) {
+  opacity: 1;
+}

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Fsh Paint</title>
+    <meta property="og:title" content="Fsh Paint">
+    <meta name="twitter:title" content="Fsh Paint">
+    <meta name="description" content="Fsh Paint, a easy to use online paint app.">
+    <meta property="og:description" content="Fsh Paint, a easy to use online paint app.">
+    <meta name="twitter:description" content="Fsh Paint, a easy to use online paint app.">
+    <link rel="canonical" href="https://paint.fsh.plus">
+    <meta property="og:url" content="https://paint.fsh.plus">
+    <!-- ------- -->
+    <meta charset="UTF-8">
+    <meta name="robots" content="index, follow">
+    <meta property="og:locale" content="en">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="https://fsh.plus/fsh.png" type="image/png">
+    <meta property="og:image" content="https://fsh.plus/fsh.png">
+    <meta property="og:image:alt" content="Fsh logo">
+    <meta name="twitter:image" content="https://fsh.plus/fsh.png">
+    <meta name="theme-color" content="#a89c9b">
+    <!-- ------- -->
+    <link rel="stylesheet" href="https://fsh.plus/media/style.css">
+    <script src="https://account.fsh.plus/script.js"></script>
+    <!-- ------------------ -->
+    <link rel="stylesheet" href="/media/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/color-namer@1.4.0/dist/color-namer.js"></script>
+  </head>
+  <body>
+    <dialog id="hello" closeby="none">
+      <h2>Projects</h2>
+      <div class="list">Loading...</div>
+      <button class="new">New</button>
+    </dialog>
+    <dialog id="newp" closeby="any">
+      <button onclick="this.parentElement.close()" class="modal-close">x</button>
+      <h2>New project</h2>
+      <label>Name: <input type="text" value="New project" maxlength="100" name="name" class="name"></label>
+      <br>
+      <label>Size: <input type="number" value="1920" min="1" name="width" class="x">x<input type="number" value="1080" min="1" name="height" class="y"></label>
+      <br>
+      <button class="create">Create</button>
+    </dialog>
+    <nav>
+      <div>
+        <img src="https://fsh.plus/fsh.png" width="50" height="50">
+        <h1>Fsh Paint</h1>
+      </div>
+      <div>
+        <button>P</button>
+        <button>E</button>
+      </div>
+      <div id="currentcolors">
+        <input type="color" id="primary">
+        <input type="color" id="secondary">
+      </div>
+      <button id="rotatecolor"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M72.7108 15L72.7107 241" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M129.932 72L74.7071 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M15.7782 72L71.0036 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M183 241L183 15" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M126.029 184L182.739 240.711" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M239.682 184L182.971 240.711" stroke-width="30" stroke-linecap="round" fill="none"/></svg></button>
+      <div id="colors"></div>
+      <vr></vr>
+      <div id="extra">
+        <label>Size: <input id="e-size" type="number" min="1" value="10"></label>
+        <label>Cap: <select id="e-cap"><option>round</option><option>butt</option><option>square</option></select></label>
+      </div>
+    </nav>
+    <main>
+      <div id="area">
+        <div id="transforms"></div>
+      </div>
+      <div id="layers">
+        <div class="bar">
+          <h2>Layers</h2>
+          <button class="add">+</button>
+        </div>
+        <div class="list"></div>
+      </div>
+    </main>
+    <script>
+      window.db = null;
+      window.projectdata = {};
+    </script>
+    <script src="/media/script.js"></script>
+  </body>
+</html>
