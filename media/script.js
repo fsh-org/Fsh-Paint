@@ -33,10 +33,9 @@ function nameColor(color) {
 
 // Saving
 let lastsave = 0;
-let savetimeout = 1000; // 1 second
-function trysave() {
+let savededupe;
+function save() {
   let now = Date.now();
-  if (now<lastsave+savetimeout) return;
   lastsave = now;
   window.projectdata.lastsave = now;
   window.projectdata.layers = window.projectdata.layers.map(l=>{
@@ -48,6 +47,29 @@ function trysave() {
   let tx = db.transaction(['projectdata'], 'readwrite');
   let dstore = tx.objectStore('projectdata');
   dstore.put(window.projectdata);
+  compositeLayers(true).convertToBlob().then(blob=>{
+    let reader = new FileReader();
+    reader.onload = ()=>{
+      document.getElementById('preview').src = reader.result;
+      let tx = db.transaction(['projects'], 'readwrite');
+      let pstore = tx.objectStore('projects');
+      pstore.put({
+        id: window.projectdata.id,
+        name: window.projectdata.name,
+        width: window.projectdata.width,
+        height: window.projectdata.height,
+        thumbnail: reader.result
+      });
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+function trysave() {
+  if (savededupe) clearTimeout(savededupe);
+  savededupe = setTimeout(()=>{
+    savededupe = null;
+    save()
+  }, 10);
 }
 
 // Tools
@@ -132,6 +154,23 @@ function showLayers() {
 }
 
 // Drawing
+function compositeLayers(preview=true) {
+  let w = window.projectdata.width;
+  let ws = window.projectdata.width/(preview?4:1);
+  let h = window.projectdata.height;
+  let hs = window.projectdata.height/(preview?4:1);
+  let offscreen = new OffscreenCanvas(ws, hs);
+  const ctx = offscreen.getContext('2d');
+  ctx.clearRect(0, 0, ws, hs);
+
+  let layers = window.projectdata.layers.toReversed();
+  for (const layer of layers) {
+    ctx.drawImage(document.getElementById(layer.id), 0, 0, w, h, 0, 0, ws, hs);
+  }
+
+  return offscreen;
+}
+
 let mouse = [false, false, false];
 function handleActiveCanvas(canvas) {
   let lastpos;
@@ -204,6 +243,8 @@ function mzinter() {
   TransformArea.style[woh?'top':'left'] = '50%';
   TransformArea.style[woh?'height':'width'] = 'unset';
   TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%)`;
+  document.getElementById('preview').style.aspectRatio = aspect.join(' / ');
+  document.getElementById('preview').style.height = 'unset';
 
   // On scroll zoom
   document.getElementById('area').onwheel = (evt)=>{
@@ -284,6 +325,7 @@ window.loadProject = (id)=>{
       showLayers();
       window.selectLayer(window.projectdata.layers[0].id);
     }
+    trysave();
   };
 };
 window.deleteProject = (id)=>{
@@ -301,7 +343,7 @@ function showProjects() {
   getReq.onsuccess = ()=>{
     document.querySelector('#hello div.list').innerHTML = getReq.result
       .map(pr=>`<div class="project">
-  <img src="${pr.thumbnail}">
+  ${pr.thumbnail?`<img src="${pr.thumbnail}"><span style="flex:1"></span>`:''}
   <span>${sanitizeHTML(pr.name)}</span>
   <span class="small">${pr.width}x${pr.height}</span>
   <span>
@@ -340,10 +382,11 @@ dbRequest.onsuccess = function(e) {
     let tx = db.transaction(['projects','projectdata'], 'readwrite');
     let pstore = tx.objectStore('projects');
     let dstore = tx.objectStore('projectdata');
+    let name = document.querySelector('#newp input.name').value;
     let width = Number(document.querySelector('#newp input.x').value)||0;
     let height = Number(document.querySelector('#newp input.y').value)||0;
     let pidreq = pstore.add({
-      name: document.querySelector('#newp input.name').value,
+      name,
       width,
       height,
       thumbnail: ''
@@ -353,6 +396,7 @@ dbRequest.onsuccess = function(e) {
       pid = e.target.result;
       dstore.add({
         id: pid,
+        name,
         width,
         height,
         lastsave: Date.now(),
