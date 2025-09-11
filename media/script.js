@@ -4,6 +4,9 @@ function sanitizeHTML(text) {
     .replaceAll('&','&amp;')
     .replaceAll('<','&lt;');
 }
+function distance(v1, v2) {
+  return Math.hypot(v2[0]-v1[0], v2[1]-v1[1]);
+}
 let oklchToHexCache = new Map();
 function oklchToHex(L, c, hDeg) {
   let k = L+'-'+c+'-'+hDeg;
@@ -47,6 +50,14 @@ function trysave() {
   dstore.put(window.projectdata);
 }
 
+// Tools
+let tool = 'pencil'
+window.setTool = (tol, _this)=>{
+  tool = tol;
+  document.querySelector('#tools [selected]').removeAttribute('selected');
+  _this.setAttribute('selected', true);
+};
+
 // Colors
 let colors = ['oklch(0.7404 0.1257 20.83)','oklch(0.7404 0.1257 67.83)','oklch(0.7404 0.1257 94.54)','oklch(0.7404 0.1257 140.47)','oklch(0.7404 0.1257 245.16)','oklch(0.7404 0.1257 308.19)','#ffffff',
 'oklch(0.6187 0.2311 20.83)','oklch(0.7552 0.1466 67.83)','oklch(0.8116 0.1543 94.54)','oklch(0.8027 0.2256 140.47)','oklch(0.6869 0.1663 245.16)','oklch(0.647 0.2487 308.19)','#888888',
@@ -84,6 +95,7 @@ window.createLayer = (type)=>{
   selectedLayer = layer.id;
   showLayers();
   window.selectLayer(layer.id);
+  trysave();
 };
 window.selectLayer = (id)=>{
   document.getElementById('l-'+selectedLayer)?.removeAttribute('selected');
@@ -94,11 +106,18 @@ window.selectLayer = (id)=>{
   document.getElementById(id).style.pointerEvents = 'all';
   handleActiveCanvas(document.getElementById(id));
 };
+window.deleteLayer = (id)=>{
+  window.projectdata.layers = window.projectdata.layers.filter(l=>l.id!==id);
+  document.getElementById(id).remove();
+  selectedLayer = window.projectdata.layers[0]?.id??'';
+  showLayers();
+  trysave();
+};
 function showLayers() {
   document.querySelector('#layers div.list').innerHTML = window.projectdata.layers
     .map(layer=>`<div id="l-${layer.id}"${layer.id===selectedLayer?' selected':''}>
   <button onclick="window.selectLayer('${layer.id}')">${layerIcons[layer.type]??''} ${layer.name}</button>
-  <button>x</button>
+  <button onclick="window.deleteLayer('${layer.id}')">x</button>
 </div>`)
     .join('')||'No layers, create one';
   tippy(document.querySelector('#layers button.add'), {
@@ -130,7 +149,9 @@ function handleActiveCanvas(canvas) {
       lastpos = [evt.clientX, evt.clientY];
       transform();
     } else if (mouse[0]) {
+      if ((document.getElementById('e-step').value||0)>distance(lastpos, [evt.clientX, evt.clientY])) return;
       let b = canvas.getBoundingClientRect();
+      ctx.globalCompositeOperation = tool==='eraser'?'destination-out':'source-over';
       ctx.strokeStyle = primary.value;
       ctx.lineWidth = document.getElementById('e-size').value||10;
       ctx.lineCap = document.getElementById('e-cap').value||'round';
@@ -327,19 +348,20 @@ dbRequest.onsuccess = function(e) {
       height,
       thumbnail: ''
     });
+    let pid;
     pidreq.onsuccess = (e) => {
-      let pid = e.target.result;
+      pid = e.target.result;
       dstore.add({
         id: pid,
         width,
         height,
         lastsave: Date.now(),
-        layers: []
+        layers: [{ id: 'base', type: 'draw', name: 'Base' }]
       });
     };
     tx.oncomplete = ()=>{
       document.getElementById('newp').close();
-      showProjects();
+      window.loadProject(pid);
     };
   };
   showProjects();

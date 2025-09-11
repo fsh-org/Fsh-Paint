@@ -50,12 +50,13 @@
         <img src="https://fsh.plus/fsh.png" width="50" height="50">
         <h1>Fsh Paint</h1>
       </div>
-      <div>
-        <button>P</button>
-        <button>E</button>
+      <div id="tools">
+        <button onclick="window.setTool('pencil', this)" aria-label="Pencil" selected><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M207.747 76.6945L78.6819 239.376L25.8919 255.811C23.8543 256.445 21.8251 254.809 22.012 252.684L26.844 197.709L154.989 35.1261L207.747 76.6945ZM181.174 1.90541C182.887 -0.267858 186.04 -0.637017 188.208 1.08216L233.106 36.6876C235.269 38.4035 235.633 41.5486 233.916 43.712L215.969 66.3331L163.157 24.7619L181.174 1.90541Z"/></svg></button>
+        <button onclick="window.setTool('eraser', this)" aria-label="Eraser">E</button>
       </div>
+      <vr></vr>
       <div id="currentcolors">
-        <input type="color" id="primary">
+        <input type="color" id="primary" value="#ffffff">
         <input type="color" id="secondary">
       </div>
       <button id="rotatecolor"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M72.7108 15L72.7107 241" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M129.932 72L74.7071 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M15.7782 72L71.0036 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M183 241L183 15" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M126.029 184L182.739 240.711" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M239.682 184L182.971 240.711" stroke-width="30" stroke-linecap="round" fill="none"/></svg></button>
@@ -64,6 +65,7 @@
       <div id="extra">
         <label>Size: <input id="e-size" type="number" min="1" value="10"></label>
         <label>Cap: <select id="e-cap"><option>round</option><option>butt</option><option>square</option></select></label>
+        <label>Step: <input id="e-step" type="number" min="0" value="0"></label>
       </div>
     </nav>
     <main>
