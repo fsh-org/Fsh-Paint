@@ -159,7 +159,7 @@ main {
   display: flex;
   flex-direction: column;
   width: 20dvw;
-  height: calc(90dvh - 62px);
+  height: calc(100dvh - 72px);
   margin: 5px;
   padding: 10px;
   border-radius: 1rem;
