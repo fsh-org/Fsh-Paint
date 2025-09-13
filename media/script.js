@@ -71,6 +71,7 @@ function trysave() {
     save()
   }, 10);
 }
+window.trysave = trysave;
 
 // Tools
 let tool = 'pencil';
@@ -140,8 +141,13 @@ window.createLayer = (type)=>{
     layer.height = window.projectdata.height;
   }
   TransformArea.insertAdjacentElement('beforeend', layer);
-  selectedLayer = layer.id;
-  showLayers();
+  document.querySelector('#layers div.list').insertAdjacentHTML('afterbegin', `<div id="l-${layer.id}"${layer.id===selectedLayer?' selected':''}>
+  <button onclick="window.selectLayer('${layer.id}')">${layerIcons[type]??''} <input class="new" value="New layer" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${layer.id}')].name=this.value;window.showLayers();window.trysave()"></button>
+  <button onclick="window.togvisLayer('${layer.id}', this)" class="other">${visibilityIcons.false}</button>
+  <button onclick="window.deleteLayer('${layer.id}')" class="other">x</button>
+</div>`);
+  document.querySelector('#layers div.list input.new').focus();
+  document.querySelector('#layers div.list input.new').select();
   window.selectLayer(layer.id);
   trysave();
 };
@@ -183,15 +189,20 @@ window.deleteLayer = (id)=>{
   showLayers();
   trysave();
 };
+window.renameLayer = (_this, id, name, type)=>{
+  _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()">`;
+  document.querySelector('#layers div.list input.new').focus();
+  document.querySelector('#layers div.list input.new').select();
+};
 function showLayers() {
   document.querySelector('#layers div.list').innerHTML = window.projectdata.layers
     .map(layer=>`<div id="l-${layer.id}"${layer.id===selectedLayer?' selected':''}>
-  <button onclick="window.selectLayer('${layer.id}')">${layerIcons[layer.type]??''} ${layer.name}</button>
+  <button onclick="window.selectLayer('${layer.id}')" ondblclick="window.renameLayer(this, '${layer.id}', '${layer.name}', '${layer.type}')">${layerIcons[layer.type]??''} ${layer.name}</button>
   <button onclick="window.togvisLayer('${layer.id}', this)" class="other">${visibilityIcons[layer.hidden.toString()]}</button>
   <button onclick="window.deleteLayer('${layer.id}')" class="other">x</button>
 </div>`)
     .join('')||'No layers, create one';
-  tippy(document.querySelector('#layers button.add'), {
+  let instance = tippy(document.querySelector('#layers button.add'), {
     allowHTML: true,
     content: `<button onclick="window.createLayer('draw')">Free draw</button>
 <button onclick="window.createLayer('shapes')">Shapes</button>`,
@@ -200,7 +211,11 @@ function showLayers() {
     placement: 'bottom-end',
     sticky: true
   });
+  instance.popper.addEventListener('click', (evt)=>{
+    if (evt.target&&evt.target.tagName.toLowerCase()==='button') instance.hide();
+  });
 }
+window.showLayers = showLayers;
 
 // Drawing
 function compositeLayers(preview=true) {

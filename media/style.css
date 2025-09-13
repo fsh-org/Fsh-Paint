@@ -205,3 +205,11 @@ main {
 #layers .list div:hover button.other {
   opacity: 1;
 }
+#layers .list input {
+  flex: 1;
+  color: currentColor;
+  border-color: currentColor;
+  width: 0px;
+  min-width: 0px;
+  margin: 0px !important;
+}
