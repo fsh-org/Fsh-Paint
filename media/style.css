@@ -199,9 +199,9 @@ main {
 #layers .list div button:nth-child(1) {
   flex: 1;
 }
-#layers .list div button:nth-child(2) {
+#layers .list div button.other {
   opacity: 0;
 }
-#layers .list div:hover button:nth-child(2) {
+#layers .list div:hover button.other {
   opacity: 1;
 }

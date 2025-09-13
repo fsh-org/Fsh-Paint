@@ -124,11 +124,15 @@ const layerIcons = {
   draw: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.4876 170.991C59.9825 149.957 91.1969 147.111 112.19 164.656C133.182 182.201 136.017 213.475 118.523 234.51L116.663 236.746C99.8583 256.951 70.3108 260.66 49.0383 245.236L5.21509 213.462C1.65427 210.88 -0.307134 206.625 0.0393098 202.234C0.491684 196.503 4.75066 191.804 10.3987 190.805L18.7815 189.321C23.7638 188.44 28.3307 185.976 31.8088 182.294L42.4876 170.991ZM189.217 11.1699C204.048 -2.06402 226.313 -2.42185 241.57 10.3291C256.827 23.0803 260.481 45.1 250.161 62.1045L182.339 173.861C177.989 181.029 171.502 186.646 163.793 189.917L152.13 194.866C149.776 195.865 147.048 194.92 145.811 192.677L134.174 171.573C131.177 166.138 127.198 161.308 122.44 157.331L118.74 154.239C113.981 150.262 108.526 147.207 102.654 145.23L79.8518 137.551C77.4274 136.734 76.0086 134.214 76.5657 131.713L79.3254 119.322C81.1492 111.133 85.4936 103.725 91.7454 98.1465L189.217 11.1699Z"/></svg>',
   shapes: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M248 89.8242C252.418 89.8242 256 93.4061 256 97.8242V248C256 252.418 252.418 256 248 256H97.8242C93.4061 256 89.8242 252.418 89.8242 248V154.748C89.8244 150.944 92.5215 147.71 96.1689 146.628C120.37 139.452 139.452 120.37 146.628 96.1689C147.71 92.5213 150.944 89.8242 154.749 89.8242H248ZM68.8652 0C106.899 0 137.731 30.832 137.731 68.8652C137.731 106.899 106.899 137.731 68.8652 137.731C30.832 137.731 0 106.899 0 68.8652C0.00014019 30.8321 30.8321 0.000140208 68.8652 0Z"/></svg>'
 };
+const visibilityIcons = {
+  'false': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M128 33C201.325 33 244.261 105.583 253.91 123.861C255.285 126.465 255.285 129.535 253.91 132.139C244.261 150.417 201.325 223 128 223C54.675 223 11.7386 150.417 2.0889 132.139C0.714388 129.535 0.714385 126.465 2.0889 123.861C11.7386 105.583 54.675 33 128 33ZM128 67C94.3107 67 67 94.3106 67 128C67 161.689 94.3107 189 128 189C161.689 189 189 161.689 189 128C189 94.3106 161.689 67 128 67Z"/><rect x="118" y="84" width="54" height="54" rx="27"/></svg>',
+  'true': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M128 33C201.325 33.0003 244.261 105.584 253.911 123.861C255.285 126.465 255.285 129.535 253.911 132.139C244.261 150.416 201.325 223 128 223C54.6753 223 11.7389 150.417 2.08926 132.139C0.714647 129.535 0.714644 126.465 2.08926 123.861C11.7389 105.583 54.6753 33 128 33ZM128 67C94.311 67 67.0004 94.3106 67.0004 128C67.0004 161.689 94.311 189 128 189C161.69 189 189 161.689 189 128C189 94.3108 161.69 67.0002 128 67Z"/><rect x="118" y="84" width="54" height="54" rx="27"/><path d="M20 20L236 236" stroke-width="40" stroke-linecap="round" fill="none"/></svg>'
+};
 const FullArea = document.getElementById('area');
 const TransformArea = document.getElementById('transforms');
 let selectedLayer = '';
 window.createLayer = (type)=>{
-  window.projectdata.layers.unshift({ id: Math.round(Math.random()*10**9).toString(36), type, name: 'New layer' });
+  window.projectdata.layers.unshift({ id: Math.round(Math.random()*10**9).toString(36), type, name: 'New layer', hidden: false });
   let layer = document.createElement(type==='draw'?'canvas':'svg');
   layer.id = window.projectdata.layers[0].id;
   if (type==='draw') {
@@ -164,6 +168,14 @@ window.selectLayer = (id)=>{
     document.getElementById('t-shapes').style.display = '';
   }
 };
+window.togvisLayer = (id,_this)=>{
+  let idx = window.projectdata.layers.findIndex(l=>l.id===id);
+  let hidden = !window.projectdata.layers[idx].hidden;
+  window.projectdata.layers[idx].hidden = hidden;
+  _this.innerHTML = visibilityIcons[hidden.toString()];
+  document.getElementById(id).style.opacity = hidden?'0':1;
+  trysave();
+};
 window.deleteLayer = (id)=>{
   window.projectdata.layers = window.projectdata.layers.filter(l=>l.id!==id);
   document.getElementById(id).remove();
@@ -175,7 +187,8 @@ function showLayers() {
   document.querySelector('#layers div.list').innerHTML = window.projectdata.layers
     .map(layer=>`<div id="l-${layer.id}"${layer.id===selectedLayer?' selected':''}>
   <button onclick="window.selectLayer('${layer.id}')">${layerIcons[layer.type]??''} ${layer.name}</button>
-  <button onclick="window.deleteLayer('${layer.id}')">x</button>
+  <button onclick="window.togvisLayer('${layer.id}', this)" class="other">${visibilityIcons[layer.hidden.toString()]}</button>
+  <button onclick="window.deleteLayer('${layer.id}')" class="other">x</button>
 </div>`)
     .join('')||'No layers, create one';
   tippy(document.querySelector('#layers button.add'), {
@@ -201,6 +214,7 @@ function compositeLayers(preview=true) {
 
   let layers = window.projectdata.layers.toReversed();
   for (const layer of layers) {
+    if (layer.hidden) continue;
     if (layer.type==='draw') {
       ctx.drawImage(document.getElementById(layer.id), 0, 0, w, h, 0, 0, ws, hs);
     }
@@ -387,6 +401,7 @@ window.loadProject = (id)=>{
     window.projectdata.layers.forEach(l=>{
       let layer = document.createElement(l.type==='draw'?'canvas':'svg');
       layer.id = l.id;
+      if (l.hidden) layer.style.opacity = 0;
       if (l.type==='draw') {
         layer.width = window.projectdata.width;
         layer.height = window.projectdata.height;
@@ -480,7 +495,7 @@ dbRequest.onsuccess = function(e) {
         width,
         height,
         lastsave: Date.now(),
-        layers: [{ id: 'base', type: 'draw', name: 'Base' }]
+        layers: [{ id: 'base', type: 'draw', name: 'Base', hidden: false }]
       });
     };
     tx.oncomplete = ()=>{
