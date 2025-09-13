@@ -75,8 +75,12 @@ window.trysave = trysave;
 
 // Tools
 let tool = 'pencil';
-window.tooloptions = { size: 10, step: 0 };
+window.tooloptions = { size: 10, step: 0, shape: 'square' };
 const ExtraTool = document.getElementById('extra');
+const shapes = [
+  { name: 'square', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect width="256" height="256" rx="20"/></svg>' },
+  { name: 'circle', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><circle cx="128" cy="128" r="128"/></svg>' }
+];
 window.setTool = (tol, _this)=>{
   tool = tol;
   document.querySelector('#tools [selected]').removeAttribute('selected');
@@ -93,10 +97,15 @@ window.setTool = (tol, _this)=>{
       }
       break;
     case 'select':
+      if (ExtraTool.getAttribute('type')!=='select') {
+        ExtraTool.setAttribute('type', 'select');
+        ExtraTool.innerHTML = '';
+      }
+      break;
     case 'shapes':
       if (ExtraTool.getAttribute('type')!=='shapes') {
         ExtraTool.setAttribute('type', 'shapes');
-        ExtraTool.innerHTML = ``;
+        ExtraTool.innerHTML = shapes.map(s=>`<button onclick="window.tooloptions.shape='${s.name}'">${s.svg}</button>`).join('');
       }
       break;
   }
@@ -133,22 +142,21 @@ const FullArea = document.getElementById('area');
 const TransformArea = document.getElementById('transforms');
 let selectedLayer = '';
 window.createLayer = (type)=>{
-  window.projectdata.layers.unshift({ id: Math.round(Math.random()*10**9).toString(36), type, name: 'New layer', hidden: false });
-  let layer = document.createElement(type==='draw'?'canvas':'svg');
-  layer.id = window.projectdata.layers[0].id;
+  let id = Math.round(Math.random()*10**9).toString(36);
+  window.projectdata.layers.unshift({ id, type, name: 'New layer', hidden: false });
   if (type==='draw') {
-    layer.width = window.projectdata.width;
-    layer.height = window.projectdata.height;
+    TransformArea.insertAdjacentHTML('beforeend', `<canvas id="${id}" width="${window.projectdata.width}" height="${window.projectdata.height}"></canvas>`);
+  } else if (type==='shapes') {
+    TransformArea.insertAdjacentHTML('beforeend', `<svg id="${id}" width="${window.projectdata.width}" height="${window.projectdata.height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${window.projectdata.width} ${window.projectdata.height}"></svg>`);
   }
-  TransformArea.insertAdjacentElement('beforeend', layer);
-  document.querySelector('#layers div.list').insertAdjacentHTML('afterbegin', `<div id="l-${layer.id}"${layer.id===selectedLayer?' selected':''}>
-  <button onclick="window.selectLayer('${layer.id}')">${layerIcons[type]??''} <input class="new" value="New layer" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${layer.id}')].name=this.value;window.showLayers();window.trysave()"></button>
-  <button onclick="window.togvisLayer('${layer.id}', this)" class="other">${visibilityIcons.false}</button>
-  <button onclick="window.deleteLayer('${layer.id}')" class="other">x</button>
+  document.querySelector('#layers div.list').insertAdjacentHTML('afterbegin', `<div id="l-${id}"${id===selectedLayer?' selected':''}>
+  <button onclick="window.selectLayer('${id}')">${layerIcons[type]??''} <input class="new" value="New layer" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()"></button>
+  <button onclick="window.togvisLayer('${id}', this)" class="other">${visibilityIcons.false}</button>
+  <button onclick="window.deleteLayer('${id}')" class="other">x</button>
 </div>`);
   document.querySelector('#layers div.list input.new').focus();
   document.querySelector('#layers div.list input.new').select();
-  window.selectLayer(layer.id);
+  window.selectLayer(id);
   trysave();
 };
 window.selectLayer = (id)=>{
@@ -172,6 +180,7 @@ window.selectLayer = (id)=>{
     document.getElementById('t-eraser').style.display = 'none';
     document.getElementById('t-select').style.display = '';
     document.getElementById('t-shapes').style.display = '';
+    handleActiveSVG(document.getElementById(id));
   }
 };
 window.togvisLayer = (id,_this)=>{
@@ -204,8 +213,8 @@ function showLayers() {
     .join('')||'No layers, create one';
   let instance = tippy(document.querySelector('#layers button.add'), {
     allowHTML: true,
-    content: `<button onclick="window.createLayer('draw')">Free draw</button>
-<button onclick="window.createLayer('shapes')">Shapes</button>`,
+    content: `<button onclick="window.createLayer('draw')">${layerIcons.draw} Free draw</button>
+<button onclick="window.createLayer('shapes')">${layerIcons.shapes} Shapes</button>`,
     interactive: true,
     trigger: 'click',
     placement: 'bottom-end',
@@ -238,10 +247,18 @@ function compositeLayers(preview=true) {
   return offscreen;
 }
 
+function globalXToLocal(x, b) {
+  return (x-b.left)/b.width*window.projectdata.width;
+}
+function globalYToLocal(y, b) {
+  return (y-b.top)/b.height*window.projectdata.height;
+}
+
 let mouse = [false, false, false];
 function handleActiveCanvas(canvas) {
   let lastpos;
   let ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
   canvas.onmousedown = (evt)=>{
     evt.preventDefault();
     mouse[evt.button] = true;
@@ -262,8 +279,8 @@ function handleActiveCanvas(canvas) {
       ctx.lineWidth = document.getElementById('e-size').value||10;
       ctx.lineCap = document.getElementById('e-cap').value||'round';
       ctx.beginPath();
-      ctx.moveTo((lastpos[0]-b.left)/b.width*window.projectdata.width, (lastpos[1]-b.top)/b.height*window.projectdata.height);
-      ctx.lineTo((evt.clientX-b.left)/b.width*window.projectdata.width, (evt.clientY-b.top)/b.height*window.projectdata.height);
+      ctx.moveTo(globalXToLocal(lastpos[0],b), globalYToLocal(lastpos[1],b));
+      ctx.lineTo(globalXToLocal(evt.clientX,b), globalYToLocal(evt.clientY,b));
       ctx.stroke();
       lastpos = [evt.clientX, evt.clientY];
       trysave();
@@ -282,13 +299,49 @@ function handleActiveCanvas(canvas) {
     if (mouse[0]) {
       let b = canvas.getBoundingClientRect();
       ctx.beginPath();
-      ctx.moveTo((lastpos[0]-b.left)/b.width*window.projectdata.width, (lastpos[1]-b.top)/b.height*window.projectdata.height);
-      ctx.lineTo((evt.clientX-b.left)/b.width*window.projectdata.width, (evt.clientY-b.top)/b.height*window.projectdata.height);
+      ctx.moveTo(globalXToLocal(lastpos[0],b), globalYToLocal(lastpos[1],b));
+      ctx.lineTo(globalXToLocal(evt.clientX,b), globalYToLocal(evt.clientY,b));
       ctx.stroke();
       trysave();
     }
     mouse = [false, false, false];
     TransformArea.style.cursor = '';
+  };
+}
+function handleActiveSVG(svg) {
+  let drag = false;
+  let firstpos = [0,0];
+  TransformArea.onmousedown = (evt)=>{
+    if (tool==='shapes') {
+      drag = true;
+      firstpos = [evt.clientX,evt.clientY];
+    }
+  };
+  TransformArea.onmouseup = (evt)=>{
+    if (!drag) return;
+    drag = false;
+    let content = '';
+    let b = svg.getBoundingClientRect();
+    let secpos = [evt.clientX,evt.clientY];
+    if (firstpos[0]>secpos[0]) { secpos[0] = firstpos[0]; firstpos[0] = evt.clientX };
+    if (firstpos[1]>secpos[1]) { secpos[1] = firstpos[1]; firstpos[1] = evt.clientY };
+    let w = Math.abs(globalXToLocal(firstpos[0],b)-globalXToLocal(secpos[0],b));
+    let h = Math.abs(globalYToLocal(firstpos[1],b)-globalYToLocal(secpos[1],b));
+    if (w===0&&h===0) {
+      w = 10;
+      h = 10;
+    }
+    w = Math.max(w,1);
+    h = Math.max(h,1);
+    switch(window.tooloptions.shape) {
+      case 'square':
+        content = `<rect width="${w}" height="${h}" x="${globalXToLocal(firstpos[0],b)}" y="${globalYToLocal(firstpos[1],b)}" rx="0"></rect>`;
+        break;
+      case 'circle':
+        content = `<ellipse cx="${globalXToLocal(firstpos[0],b)+Math.floor(w/2)}" rx="${Math.floor(w/2)}" cy="${globalYToLocal(firstpos[1],b)+Math.floor(h/2)}" ry="${Math.floor(h/2)}"></ellipse>`;
+        break;
+    }
+    svg.insertAdjacentHTML('afterbegin', content);
   };
 }
 
@@ -414,21 +467,18 @@ window.loadProject = (id)=>{
     showLayers();
     mzinter();
     window.projectdata.layers.forEach(l=>{
-      let layer = document.createElement(l.type==='draw'?'canvas':'svg');
-      layer.id = l.id;
-      if (l.hidden) layer.style.opacity = 0;
       if (l.type==='draw') {
-        layer.width = window.projectdata.width;
-        layer.height = window.projectdata.height;
-        if (l.data) {
-          let img = new Image();
-          img.src = l.data;
-          img.onload = ()=>{
-            layer.getContext('2d').drawImage(img, 0, 0);
-          };
-        }
+        TransformArea.insertAdjacentHTML('afterbegin', `<canvas id="${l.id}" width="${window.projectdata.width}" height="${window.projectdata.height}"${l.hidden?' style="opacity:0"':''}></canvas>`);
+      } else if (l.type==='shapes') {
+        TransformArea.insertAdjacentHTML('afterbegin', `<svg id="${l.id}" width="${window.projectdata.width}" height="${window.projectdata.height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${window.projectdata.width} ${window.projectdata.height}"${l.hidden?' style="opacity:0"':''}></svg>`);
       }
-      TransformArea.insertAdjacentElement('beforeend', layer);
+      if (l.type==='draw'&&l.data) {
+        let img = new Image();
+        img.onload = ()=>{
+          document.getElementById(l.id).getContext('2d').drawImage(img, 0, 0);
+        };
+        img.src = l.data;
+      }
     });
     if (window.projectdata.layers[0]) {
       selectedLayer = window.projectdata.layers[0].id;
@@ -487,6 +537,8 @@ dbRequest.onsuccess = function(e) {
   document.getElementById('hello').showModal();
   document.querySelector('#hello button.new').onclick = ()=>{
     document.getElementById('newp').showModal();
+    document.querySelector('#newp input.name').focus();
+    document.querySelector('#newp input.name').select();
   };
   document.querySelector('#newp button.create').onclick = ()=>{
     let tx = db.transaction(['projects','projectdata'], 'readwrite');

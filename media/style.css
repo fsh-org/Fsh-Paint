@@ -32,7 +32,13 @@ input[type="number"] {
 
 .tippy-content {
   display: flex;
+  gap: 5px;
   flex-direction: column;
+}
+.tippy-content button {
+  display: flex;
+  gap: 5px;
+  align-items: center;
 }
 
 #hello div.list {
@@ -52,6 +58,7 @@ input[type="number"] {
   max-width: 15dvw;
   max-height: 15dvh;
   object-fit: contain;
+  image-rendering: pixelated;
 }
 .project .small {
   font-size: 80%;
@@ -154,6 +161,7 @@ main {
   height: 0px;
   max-height: 15dvh;
   object-fit: contain;
+  image-rendering: pixelated;
 }
 #layers {
   display: flex;
