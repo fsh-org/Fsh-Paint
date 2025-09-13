@@ -188,6 +188,7 @@ window.togvisLayer = (id,_this)=>{
   let hidden = !window.projectdata.layers[idx].hidden;
   window.projectdata.layers[idx].hidden = hidden;
   _this.innerHTML = visibilityIcons[hidden.toString()];
+  _this.parentElement.style.color = hidden?'var(--text-3)':'';
   document.getElementById(id).style.opacity = hidden?'0':1;
   trysave();
 };
@@ -205,7 +206,7 @@ window.renameLayer = (_this, id, name, type)=>{
 };
 function showLayers() {
   document.querySelector('#layers div.list').innerHTML = window.projectdata.layers
-    .map(layer=>`<div id="l-${layer.id}"${layer.id===selectedLayer?' selected':''}>
+    .map(layer=>`<div id="l-${layer.id}"${layer.hidden?' style="color:var(--text-3)"':''}${layer.id===selectedLayer?' selected':''}>
   <button onclick="window.selectLayer('${layer.id}')" ondblclick="window.renameLayer(this, '${layer.id}', '${layer.name}', '${layer.type}')">${layerIcons[layer.type]??''} ${layer.name}</button>
   <button onclick="window.togvisLayer('${layer.id}', this)" class="other">${visibilityIcons[layer.hidden.toString()]}</button>
   <button onclick="window.deleteLayer('${layer.id}')" class="other">x</button>
@@ -335,18 +336,18 @@ function handleActiveSVG(svg) {
     h = Math.max(h,1);
     switch(window.tooloptions.shape) {
       case 'square':
-        content = `<rect width="${w}" height="${h}" x="${globalXToLocal(firstpos[0],b)}" y="${globalYToLocal(firstpos[1],b)}" rx="0"></rect>`;
+        content = `<rect fill="${primary.value}" width="${w}" height="${h}" x="${globalXToLocal(firstpos[0],b)}" y="${globalYToLocal(firstpos[1],b)}" rx="0" stroke="none"></rect>`;
         break;
       case 'circle':
-        content = `<ellipse cx="${globalXToLocal(firstpos[0],b)+Math.floor(w/2)}" rx="${Math.floor(w/2)}" cy="${globalYToLocal(firstpos[1],b)+Math.floor(h/2)}" ry="${Math.floor(h/2)}"></ellipse>`;
+        content = `<ellipse fill="${primary.value}" cx="${globalXToLocal(firstpos[0],b)+Math.floor(w/2)}" rx="${Math.floor(w/2)}" cy="${globalYToLocal(firstpos[1],b)+Math.floor(h/2)}" ry="${Math.floor(h/2)}" stroke="none"></ellipse>`;
         break;
     }
-    svg.insertAdjacentHTML('afterbegin', content);
+    svg.insertAdjacentHTML('beforeend', content);
   };
 }
 
 // Drawing images
-function putImage(file) {
+function putImage(file, oevt) {
   const reader = new FileReader();
   reader.onload = function(evt) {
     let layer = window.projectdata.layers.find(l=>l.id===selectedLayer);
@@ -354,7 +355,7 @@ function putImage(file) {
     let img = new Image();
     img.onload = ()=>{
       if (layer.type==='shapes') {
-        document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<img src="${evt.target.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" draggable="false">`)
+        document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<image href="${evt.target.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" x="${globalXToLocal(oevt.clientX,b)}" y="${globalYToLocal(oevt.clientY,b)}"></image>`)
       }
     };
     img.src = evt.target.result;
@@ -366,7 +367,7 @@ FullArea.ondrop = (evt)=>{
   let files = evt.dataTransfer.files;
   if (!files[0]) return;
   if (!files[0].type.startsWith('image/')) return;
-  putImage(files[0]);
+  putImage(files[0], evt);
 };
 FullArea.ondragover = (evt)=>{
   evt.preventDefault();
@@ -377,7 +378,7 @@ FullArea.ondragleave = (evt)=>{
 document.onpaste = (evt)=>{
   let items = Array.from(evt.clipboardData.items).filter(item=>item.type.startsWith('image/'));
   if (!items[0]) return;
-  putImage(items[0].getAsFile());
+  putImage(items[0].getAsFile(), evt);
 };
 
 // User move & zoom

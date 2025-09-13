@@ -201,6 +201,7 @@ main {
   display: flex;
   gap: 5px;
   align-items: center;
+  color: currentColor;
   border: none;
   outline: none;
 }
