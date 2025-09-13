@@ -41,13 +41,15 @@ function save() {
   window.projectdata.layers = window.projectdata.layers.map(l=>{
     if (l.type==='draw') {
       l.data = document.getElementById(l.id).toDataURL();
+    } else if (l.type==='shapes') {
+      l.data = document.getElementById(l.id).innerHTML;
     }
     return l;
   });
   let tx = db.transaction(['projectdata'], 'readwrite');
   let dstore = tx.objectStore('projectdata');
   dstore.put(window.projectdata);
-  compositeLayers(true).convertToBlob().then(blob=>{
+  compositeLayers(true).then(res=>res.convertToBlob()).then(blob=>{
     let reader = new FileReader();
     reader.onload = ()=>{
       document.getElementById('preview').src = reader.result;
@@ -228,7 +230,19 @@ function showLayers() {
 window.showLayers = showLayers;
 
 // Drawing
-function compositeLayers(preview=true) {
+function svgToImg(elem) {
+  return new Promise((resolve)=>{
+    let data = new XMLSerializer().serializeToString(elem);
+    data = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+    let img = new Image();
+    img.onload = ()=>{
+      resolve(img);
+      URL.revokeObjectURL(img.src);
+    }
+    img.src = URL.createObjectURL(data);
+  });
+}
+async function compositeLayers(preview=true) {
   let w = window.projectdata.width;
   let ws = window.projectdata.width/(preview?4:1);
   let h = window.projectdata.height;
@@ -242,6 +256,8 @@ function compositeLayers(preview=true) {
     if (layer.hidden) continue;
     if (layer.type==='draw') {
       ctx.drawImage(document.getElementById(layer.id), 0, 0, w, h, 0, 0, ws, hs);
+    } else if (layer.type==='shapes') {
+      ctx.drawImage((await svgToImg(document.getElementById(layer.id))), 0, 0, w, h, 0, 0, ws, hs);
     }
   }
 
@@ -343,6 +359,7 @@ function handleActiveSVG(svg) {
         break;
     }
     svg.insertAdjacentHTML('beforeend', content);
+    trysave();
   };
 }
 
@@ -473,12 +490,16 @@ window.loadProject = (id)=>{
       } else if (l.type==='shapes') {
         TransformArea.insertAdjacentHTML('afterbegin', `<svg id="${l.id}" width="${window.projectdata.width}" height="${window.projectdata.height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${window.projectdata.width} ${window.projectdata.height}"${l.hidden?' style="opacity:0"':''}></svg>`);
       }
-      if (l.type==='draw'&&l.data) {
-        let img = new Image();
-        img.onload = ()=>{
-          document.getElementById(l.id).getContext('2d').drawImage(img, 0, 0);
-        };
-        img.src = l.data;
+      if (l.data) {
+        if (l.type==='draw') {
+          let img = new Image();
+          img.onload = ()=>{
+            document.getElementById(l.id).getContext('2d').drawImage(img, 0, 0);
+          };
+          img.src = l.data;
+        } else if (l.type==='shapes') {
+          document.getElementById(l.id).innerHTML = l.data;
+        }
       }
     });
     if (window.projectdata.layers[0]) {
