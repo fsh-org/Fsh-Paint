@@ -194,6 +194,7 @@ main {
   gap: 5px;
   align-items: center;
   border: none;
+  outline: none;
 }
 #layers .list div button:nth-child(1) {
   flex: 1;

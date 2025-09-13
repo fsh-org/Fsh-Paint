@@ -73,11 +73,32 @@ function trysave() {
 }
 
 // Tools
-let tool = 'pencil'
+let tool = 'pencil';
+window.tooloptions = { size: 10, step: 0 };
+const ExtraTool = document.getElementById('extra');
 window.setTool = (tol, _this)=>{
   tool = tol;
   document.querySelector('#tools [selected]').removeAttribute('selected');
-  _this.setAttribute('selected', true);
+  document.getElementById('t-'+tool).setAttribute('selected', true);
+
+  switch(tool) {
+    case 'pencil':
+    case 'eraser':
+      if (ExtraTool.getAttribute('type')!=='draw') {
+        ExtraTool.setAttribute('type', 'draw');
+        ExtraTool.innerHTML = `<label>Size: <input id="e-size" type="number" min="1" value="${window.tooloptions.size}" onchange="window.tooloptions.size=this.value"></label>
+<label>Cap: <select id="e-cap"><option>round</option><option>butt</option><option>square</option></select></label>
+<label>Step: <input id="e-step" type="number" min="0" value="${window.tooloptions.step}" onchange="window.tooloptions.step=this.value"></label>`;
+      }
+      break;
+    case 'select':
+    case 'shapes':
+      if (ExtraTool.getAttribute('type')!=='shapes') {
+        ExtraTool.setAttribute('type', 'shapes');
+        ExtraTool.innerHTML = ``;
+      }
+      break;
+  }
 };
 
 // Colors
@@ -103,6 +124,7 @@ const layerIcons = {
   draw: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.4876 170.991C59.9825 149.957 91.1969 147.111 112.19 164.656C133.182 182.201 136.017 213.475 118.523 234.51L116.663 236.746C99.8583 256.951 70.3108 260.66 49.0383 245.236L5.21509 213.462C1.65427 210.88 -0.307134 206.625 0.0393098 202.234C0.491684 196.503 4.75066 191.804 10.3987 190.805L18.7815 189.321C23.7638 188.44 28.3307 185.976 31.8088 182.294L42.4876 170.991ZM189.217 11.1699C204.048 -2.06402 226.313 -2.42185 241.57 10.3291C256.827 23.0803 260.481 45.1 250.161 62.1045L182.339 173.861C177.989 181.029 171.502 186.646 163.793 189.917L152.13 194.866C149.776 195.865 147.048 194.92 145.811 192.677L134.174 171.573C131.177 166.138 127.198 161.308 122.44 157.331L118.74 154.239C113.981 150.262 108.526 147.207 102.654 145.23L79.8518 137.551C77.4274 136.734 76.0086 134.214 76.5657 131.713L79.3254 119.322C81.1492 111.133 85.4936 103.725 91.7454 98.1465L189.217 11.1699Z"/></svg>',
   shapes: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M248 89.8242C252.418 89.8242 256 93.4061 256 97.8242V248C256 252.418 252.418 256 248 256H97.8242C93.4061 256 89.8242 252.418 89.8242 248V154.748C89.8244 150.944 92.5215 147.71 96.1689 146.628C120.37 139.452 139.452 120.37 146.628 96.1689C147.71 92.5213 150.944 89.8242 154.749 89.8242H248ZM68.8652 0C106.899 0 137.731 30.832 137.731 68.8652C137.731 106.899 106.899 137.731 68.8652 137.731C30.832 137.731 0 106.899 0 68.8652C0.00014019 30.8321 30.8321 0.000140208 68.8652 0Z"/></svg>'
 };
+const FullArea = document.getElementById('area');
 const TransformArea = document.getElementById('transforms');
 let selectedLayer = '';
 window.createLayer = (type)=>{
@@ -120,13 +142,27 @@ window.createLayer = (type)=>{
   trysave();
 };
 window.selectLayer = (id)=>{
+  let type = window.projectdata.layers.find(l=>l.id===id).type;
   document.getElementById('l-'+selectedLayer)?.removeAttribute('selected');
   document.getElementById('l-'+id).setAttribute('selected', true);
   document.getElementById(selectedLayer).style.pointerEvents = '';
   selectedLayer = id;
   TransformArea.querySelectorAll('canvas').forEach(canvas=>canvas.onmousedown=canvas.onmousemove=canvas.onmouseup=canvas.onmouseenter=canvas.onmouseleave=()=>{});
   document.getElementById(id).style.pointerEvents = 'all';
-  handleActiveCanvas(document.getElementById(id));
+  if (type==='draw') {
+    if (!['pencil','eraser'].includes(tool)) window.setTool('pencil');
+    document.getElementById('t-pencil').style.display = '';
+    document.getElementById('t-eraser').style.display = '';
+    document.getElementById('t-select').style.display = 'none';
+    document.getElementById('t-shapes').style.display = 'none';
+    handleActiveCanvas(document.getElementById(id));
+  } else {
+    if (!['select','shapes'].includes(tool)) window.setTool('select');
+    document.getElementById('t-pencil').style.display = 'none';
+    document.getElementById('t-eraser').style.display = 'none';
+    document.getElementById('t-select').style.display = '';
+    document.getElementById('t-shapes').style.display = '';
+  }
 };
 window.deleteLayer = (id)=>{
   window.projectdata.layers = window.projectdata.layers.filter(l=>l.id!==id);
@@ -165,7 +201,9 @@ function compositeLayers(preview=true) {
 
   let layers = window.projectdata.layers.toReversed();
   for (const layer of layers) {
-    ctx.drawImage(document.getElementById(layer.id), 0, 0, w, h, 0, 0, ws, hs);
+    if (layer.type==='draw') {
+      ctx.drawImage(document.getElementById(layer.id), 0, 0, w, h, 0, 0, ws, hs);
+    }
   }
 
   return offscreen;
@@ -225,6 +263,41 @@ function handleActiveCanvas(canvas) {
   };
 }
 
+// Drawing images
+function putImage(file) {
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    let layer = window.projectdata.layers.find(l=>l.id===selectedLayer);
+    let b = document.getElementById(layer.id).getBoundingClientRect();
+    let img = new Image();
+    img.onload = ()=>{
+      if (layer.type==='shapes') {
+        document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<img src="${evt.target.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" draggable="false">`)
+      }
+    };
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+FullArea.ondrop = (evt)=>{
+  evt.preventDefault();
+  let files = evt.dataTransfer.files;
+  if (!files[0]) return;
+  if (!files[0].type.startsWith('image/')) return;
+  putImage(files[0]);
+};
+FullArea.ondragover = (evt)=>{
+  evt.preventDefault();
+};
+FullArea.ondragleave = (evt)=>{
+  evt.preventDefault();
+};
+document.onpaste = (evt)=>{
+  let items = Array.from(evt.clipboardData.items).filter(item=>item.type.startsWith('image/'));
+  if (!items[0]) return;
+  putImage(items[0].getAsFile());
+};
+
 // User move & zoom
 let x = 0;
 let y = 0;
@@ -246,8 +319,14 @@ function mzinter() {
   document.getElementById('preview').style.aspectRatio = aspect.join(' / ');
   document.getElementById('preview').style.height = 'unset';
 
+  // Focus
+  FullArea.onmousedown = ()=>{
+    if (['input','select'].includes(document.activeElement.tagName.toLowerCase())) {
+      document.activeElement.blur();
+    }
+  };
   // On scroll zoom
-  document.getElementById('area').onwheel = (evt)=>{
+  FullArea.onwheel = (evt)=>{
     if (evt.ctrlKey) evt.preventDefault();
     zoom += evt.deltaY/-(evt.shiftKey?500:(evt.altKey?2000:1000));
     zoom = Math.max(parseFloat(zoom.toFixed(5)), 0.1);
@@ -255,6 +334,7 @@ function mzinter() {
   };
   // On arrow keys move
   document.onkeydown = (evt)=>{
+    if (['input','select'].includes(document.activeElement.tagName.toLowerCase())) return;
     let amount = (evt.shiftKey?50:(evt.altKey?5:10));
     switch(evt.key) {
       case 'ArrowUp':
