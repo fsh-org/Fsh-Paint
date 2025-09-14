@@ -42,7 +42,7 @@ function save() {
     if (l.type==='draw') {
       l.data = document.getElementById(l.id).toDataURL();
     } else if (l.type==='shapes') {
-      l.data = document.getElementById(l.id).innerHTML;
+      l.data = document.getElementById(l.id).innerHTML.replaceAll(' class="select"','').replaceAll(' onclick="window.svgclick(this)"','');
     }
     return l;
   });
@@ -119,10 +119,14 @@ let colors = ['oklch(0.7404 0.1257 20.83)','oklch(0.7404 0.1257 67.83)','oklch(0
 'oklch(0.3813 0.1311 20.83)','oklch(0.5178 0.0966 67.83)','oklch(0.5504 0.1043 94.54)','oklch(0.4377 0.1256 140.47)','oklch(0.4618 0.1163 245.16)','oklch(0.3724 0.1487 308.19)','#000000'];
 let primary = document.getElementById('primary');
 let secondary = document.getElementById('secondary');
+window.setColor = (color)=>{
+  primary.value = color;
+  primary.dispatchEvent(new Event('input', { bubbles: true }));
+};
 function showColors() {
   document.getElementById('colors').innerHTML = colors.map(c=>{
     let name = c.startsWith('oklch(')?nameColor(oklchToHex(...c.slice(6,c.length-1).split(' '))):nameColor(c);
-    return `<button onclick="document.getElementById('primary').value='${c.startsWith('oklch(')?oklchToHex(...c.slice(6,c.length-1).split(' ')):c}'" style="--color:${c}" aria-label="${name}" title="${name}"></button>`
+    return `<button onclick="window.setColor('${c.startsWith('oklch(')?oklchToHex(...c.slice(6,c.length-1).split(' ')):c}')" style="--color:${c}" aria-label="${name}" title="${name}"></button>`
   }).join('');
   document.getElementById('rotatecolor').onclick = ()=>{
     let pi = primary.value;
@@ -325,6 +329,42 @@ function handleActiveCanvas(canvas) {
     TransformArea.style.cursor = '';
   };
 }
+window.svgactive = null;
+window.svgprevc = null;
+window.svgclick = (_this)=>{
+  if (tool!=='select') return;
+  window.svgactive = _this;
+  _this.classList.add('select');
+  let prevc = primary.value;
+  window.svgprevc = prevc;
+  primary.value = _this.getAttribute('fill');
+  primary.oninput = ()=>{
+    _this.setAttribute('fill', primary.value);
+    trysave();
+  };
+  switch(_this.tagName.toLowerCase()) {
+    case 'rect':
+      ExtraTool.innerHTML = `<label>Round: <input type="number" value="${_this.getAttribute('rx')}" min="0" oninput="window.svgactive.setAttribute('rx',this.value);window.trysave()"></label>`;
+      break;
+    case 'ellipse':
+      ExtraTool.innerHTML = ``;
+      break;
+  }
+  setTimeout(()=>{
+    FullArea.onclick = (evt)=>{
+      if (evt.target===_this) return;
+      _this.classList.remove('select');
+      if (_this.parentElement!==evt.target&&_this.parentElement.contains(evt.target)) {
+        window.svgprevc = prevc;
+        return;
+      }
+      primary.value = window.svgprevc;
+      primary.oninput = ()=>{};
+      FullArea.onclick = ()=>{};
+      ExtraTool.innerHTML = '';
+    };
+  }, 0);
+};
 function handleActiveSVG(svg) {
   let drag = false;
   let firstpos = [0,0];
@@ -352,10 +392,10 @@ function handleActiveSVG(svg) {
     h = Math.max(h,1);
     switch(window.tooloptions.shape) {
       case 'square':
-        content = `<rect fill="${primary.value}" width="${w}" height="${h}" x="${globalXToLocal(firstpos[0],b)}" y="${globalYToLocal(firstpos[1],b)}" rx="0" stroke="none"></rect>`;
+        content = `<rect onclick="window.svgclick(this)" fill="${primary.value}" width="${w}" height="${h}" x="${globalXToLocal(firstpos[0],b)}" y="${globalYToLocal(firstpos[1],b)}" rx="0" stroke="none"></rect>`;
         break;
       case 'circle':
-        content = `<ellipse fill="${primary.value}" cx="${globalXToLocal(firstpos[0],b)+Math.floor(w/2)}" rx="${Math.floor(w/2)}" cy="${globalYToLocal(firstpos[1],b)+Math.floor(h/2)}" ry="${Math.floor(h/2)}" stroke="none"></ellipse>`;
+        content = `<ellipse onclick="window.svgclick(this)" fill="${primary.value}" cx="${globalXToLocal(firstpos[0],b)+Math.floor(w/2)}" rx="${Math.floor(w/2)}" cy="${globalYToLocal(firstpos[1],b)+Math.floor(h/2)}" ry="${Math.floor(h/2)}" stroke="none"></ellipse>`;
         break;
     }
     svg.insertAdjacentHTML('beforeend', content);
@@ -432,11 +472,12 @@ function mzinter() {
     zoom = Math.max(parseFloat(zoom.toFixed(5)), 0.1);
     transform();
   };
-  // On arrow keys move
+  // Keybinds
   document.onkeydown = (evt)=>{
     if (['input','select'].includes(document.activeElement.tagName.toLowerCase())) return;
     let amount = (evt.shiftKey?50:(evt.altKey?5:10));
     switch(evt.key) {
+      // Move
       case 'ArrowUp':
         y += amount;
         break;
@@ -449,6 +490,7 @@ function mzinter() {
       case 'ArrowRight':
         x -= amount;
         break;
+      // Zoom
       case '+':
         if (!evt.ctrlKey) return;
         evt.preventDefault();
@@ -466,6 +508,14 @@ function mzinter() {
         zoom = 1;
         x = 0;
         y = 0;
+        break;
+      // Del
+      case 'Backspace':
+      case 'Delete':
+        if (document.querySelector('#transforms svg .select')) {
+          document.querySelector('#transforms svg .select').remove();
+          trysave();
+        }
         break;
       default:
         return;
@@ -499,6 +549,7 @@ window.loadProject = (id)=>{
           img.src = l.data;
         } else if (l.type==='shapes') {
           document.getElementById(l.id).innerHTML = l.data;
+          Array.from(document.getElementById(l.id).children).forEach(elem=>elem.setAttribute('onclick','window.svgclick(this)'));
         }
       }
     });
