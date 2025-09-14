@@ -12,7 +12,7 @@ vr {
   background-color: var(--bg-3);
 }
 
-input {
+input:not([type="range"]) {
   margin: 2px !important;
   padding: 2px 4px !important;
 }
@@ -82,10 +82,22 @@ nav div {
   align-items: center;
 }
 
-#tools button {
+#actions button, #tools button, #rotatecolor, #colors button, #extra button {
   border: none;
   outline: none;
 }
+
+#export .type button {
+  color: var(--text-1);
+  padding: 10px;
+  border: none;
+  background-color: var(--bg-0);
+  outline: none;
+}
+#export .type button[selected] {
+  background-color: var(--bg-3);
+}
+
 #tools button[selected] {
   color: var(--text-1);
   background-color: var(--bg-2);
@@ -101,7 +113,6 @@ nav div {
 }
 
 #rotatecolor {
-  border: none;
   margin-left: -8px;
 }
 
@@ -119,7 +130,6 @@ nav div {
   height: var(--colors-size);
   margin: 0px;
   padding: 0px;
-  border: none;
   border-radius: 5px;
   background-color: var(--color);
 }
@@ -158,6 +168,8 @@ main {
 }
 #transforms > svg .select {
   stroke: var(--text-1);
+}
+#transforms > svg .select:not(line) {
   stroke-width: 5px;
 }
 #preview {

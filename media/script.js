@@ -49,7 +49,7 @@ function save() {
   let tx = db.transaction(['projectdata'], 'readwrite');
   let dstore = tx.objectStore('projectdata');
   dstore.put(window.projectdata);
-  compositeLayers(true).then(res=>res.convertToBlob()).then(blob=>{
+  compositeLayers(true).then(res=>res.convertToBlob({ type: 'image/webp', quality: 0.5 })).then(blob=>{
     let reader = new FileReader();
     reader.onload = ()=>{
       document.getElementById('preview').src = reader.result;
@@ -75,13 +75,31 @@ function trysave() {
 }
 window.trysave = trysave;
 
+// Actions
+function setActions() {
+  document.querySelectorAll('#actions button').forEach(btn=>{
+    btn.onclick = ()=>{
+      let act = btn.getAttribute('action');
+      switch(act) {
+        case 'save':
+          trysave();
+          break;
+        case 'export':
+          document.getElementById('export').showModal();
+          break;
+      }
+    };
+  });
+}
+
 // Tools
 let tool = 'pencil';
 window.tooloptions = { size: 10, step: 0, shape: 'square' };
 const ExtraTool = document.getElementById('extra');
 const shapes = [
   { name: 'square', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect width="256" height="256" rx="20"/></svg>' },
-  { name: 'circle', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><circle cx="128" cy="128" r="128"/></svg>' }
+  { name: 'circle', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><circle cx="128" cy="128" r="128"/></svg>' },
+  { name: 'line', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect x="218.233" y="16" width="32" height="286" rx="16" transform="rotate(45 218.233 16)"/></svg>' }
 ];
 window.setTool = (tol, _this)=>{
   tool = tol;
@@ -107,7 +125,7 @@ window.setTool = (tol, _this)=>{
     case 'shapes':
       if (ExtraTool.getAttribute('type')!=='shapes') {
         ExtraTool.setAttribute('type', 'shapes');
-        ExtraTool.innerHTML = shapes.map(s=>`<button onclick="window.tooloptions.shape='${s.name}'">${s.svg}</button>`).join('');
+        ExtraTool.innerHTML = shapes.map(s=>`<button onclick="window.tooloptions.shape='${s.name}'" aria-label="${s.name}" title="${s.name}">${s.svg}</button>`).join('');
       }
       break;
   }
@@ -246,7 +264,7 @@ function svgToImg(elem) {
     img.src = URL.createObjectURL(data);
   });
 }
-async function compositeLayers(preview=true) {
+async function compositeLayers(preview=true, transparency=true) {
   let w = window.projectdata.width;
   let ws = window.projectdata.width/(preview?4:1);
   let h = window.projectdata.height;
@@ -254,6 +272,11 @@ async function compositeLayers(preview=true) {
   let offscreen = new OffscreenCanvas(ws, hs);
   const ctx = offscreen.getContext('2d');
   ctx.clearRect(0, 0, ws, hs);
+
+  if (!transparency) {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, ws, hs);
+  }
 
   let layers = window.projectdata.layers.toReversed();
   for (const layer of layers) {
@@ -267,6 +290,7 @@ async function compositeLayers(preview=true) {
 
   return offscreen;
 }
+window.compositeLayers = compositeLayers;
 
 function globalXToLocal(x, b) {
   return (x-b.left)/b.width*window.projectdata.width;
@@ -337,17 +361,22 @@ window.svgclick = (_this)=>{
   _this.classList.add('select');
   let prevc = primary.value;
   window.svgprevc = prevc;
-  primary.value = _this.getAttribute('fill');
+  primary.value = _this.getAttribute((_this.tagName.toLowerCase()==='line')?'stroke':'fill');
   primary.oninput = ()=>{
-    _this.setAttribute('fill', primary.value);
+    _this.setAttribute((_this.tagName.toLowerCase()==='line')?'stroke':'fill', primary.value);
     trysave();
   };
   switch(_this.tagName.toLowerCase()) {
     case 'rect':
-      ExtraTool.innerHTML = `<label>Round: <input type="number" value="${_this.getAttribute('rx')}" min="0" oninput="window.svgactive.setAttribute('rx',this.value);window.trysave()"></label>`;
+      ExtraTool.innerHTML = `<label>Roundness: <input type="number" value="${_this.getAttribute('rx')}" min="0" oninput="window.svgactive.setAttribute('rx',this.value);window.trysave()"></label>`;
       break;
-    case 'ellipse':
-      ExtraTool.innerHTML = ``;
+    case 'line':
+      ExtraTool.innerHTML = `<label>Width: <input type="number" value="${_this.getAttribute('stroke-width')}" min="1" oninput="window.svgactive.setAttribute('stroke-width',this.value);window.trysave()"></label>
+<label>Cap: <select id="e-cap" onchange="window.svgactive.setAttribute('stroke-linecap',this.value);window.trysave()"><option>round</option><option>butt</option><option>square</option></select></label>`;
+      ExtraTool.querySelector('select').value = _this.getAttribute('stroke-linecap');
+      break;
+    default:
+      ExtraTool.innerHTML = 'No options';
       break;
   }
   setTimeout(()=>{
@@ -380,8 +409,10 @@ function handleActiveSVG(svg) {
     let content = '';
     let b = svg.getBoundingClientRect();
     let secpos = [evt.clientX,evt.clientY];
-    if (firstpos[0]>secpos[0]) { secpos[0] = firstpos[0]; firstpos[0] = evt.clientX };
-    if (firstpos[1]>secpos[1]) { secpos[1] = firstpos[1]; firstpos[1] = evt.clientY };
+    if (window.tooloptions.shape!=='line') {
+      if (firstpos[0]>secpos[0]) { secpos[0] = firstpos[0]; firstpos[0] = evt.clientX };
+      if (firstpos[1]>secpos[1]) { secpos[1] = firstpos[1]; firstpos[1] = evt.clientY };
+    }
     let w = Math.abs(globalXToLocal(firstpos[0],b)-globalXToLocal(secpos[0],b));
     let h = Math.abs(globalYToLocal(firstpos[1],b)-globalYToLocal(secpos[1],b));
     if (w===0&&h===0) {
@@ -396,6 +427,9 @@ function handleActiveSVG(svg) {
         break;
       case 'circle':
         content = `<ellipse onclick="window.svgclick(this)" fill="${primary.value}" cx="${globalXToLocal(firstpos[0],b)+Math.floor(w/2)}" rx="${Math.floor(w/2)}" cy="${globalYToLocal(firstpos[1],b)+Math.floor(h/2)}" ry="${Math.floor(h/2)}" stroke="none"></ellipse>`;
+        break;
+      case 'line':
+        content = `<line onclick="window.svgclick(this)" stroke="${primary.value}" stroke-width="10" stroke-linecap="round" x1="${globalXToLocal(firstpos[0],b)}" y1="${globalYToLocal(firstpos[1],b)}" x2="${globalXToLocal(secpos[0],b)}" y2="${globalYToLocal(secpos[1],b)}" fill="none"></line>`;
         break;
     }
     svg.insertAdjacentHTML('beforeend', content);
@@ -604,6 +638,7 @@ dbRequest.onsuccess = function(e) {
   window.db = db;
 
   // General setup
+  setActions();
   showColors();
 
   // Hello modal
@@ -618,8 +653,8 @@ dbRequest.onsuccess = function(e) {
     let pstore = tx.objectStore('projects');
     let dstore = tx.objectStore('projectdata');
     let name = document.querySelector('#newp input.name').value;
-    let width = Number(document.querySelector('#newp input.x').value)||0;
-    let height = Number(document.querySelector('#newp input.y').value)||0;
+    let width = Math.max(Number(document.querySelector('#newp input.x').value)||1, 1);
+    let height = Math.max(Number(document.querySelector('#newp input.y').value)||1, 1);
     let pidreq = pstore.add({
       name,
       width,
