@@ -304,13 +304,13 @@ function handleActiveCanvas(canvas) {
   let lastpos;
   let ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
-  canvas.onmousedown = (evt)=>{
+  canvas.onpointerdown = (evt)=>{
     evt.preventDefault();
     mouse[evt.button] = true;
     lastpos = [evt.clientX, evt.clientY];
     if (mouse[1]) TransformArea.style.cursor = 'move';
   };
-  canvas.onmousemove = (evt)=>{
+  canvas.onpointermove = (evt)=>{
     if (mouse[1]) {
       x += (evt.clientX-lastpos[0])/zoom;
       y += (evt.clientY-lastpos[1])/zoom;
@@ -331,16 +331,16 @@ function handleActiveCanvas(canvas) {
       trysave();
     }
   };
-  canvas.onmouseup = (evt)=>{
+  canvas.onpointerup = (evt)=>{
     mouse[evt.button] = false;
     if (!mouse[1]) TransformArea.style.cursor = '';
   };
-  canvas.onmouseenter = (evt)=>{
+  canvas.onpointerenter = (evt)=>{
     mouse = [(evt.buttons>>0&1)===1, (evt.buttons>>1&1)===1, (evt.buttons>>2&1)===1];
     lastpos = [evt.clientX, evt.clientY];
     if (mouse[1]) TransformArea.style.cursor = 'move';
   };
-  canvas.onmouseleave = (evt)=>{
+  canvas.onpointerleave = (evt)=>{
     if (mouse[0]) {
       let b = canvas.getBoundingClientRect();
       ctx.beginPath();
@@ -397,13 +397,13 @@ window.svgclick = (_this)=>{
 function handleActiveSVG(svg) {
   let drag = false;
   let firstpos = [0,0];
-  TransformArea.onmousedown = (evt)=>{
+  TransformArea.onpointerdown = (evt)=>{
     if (tool==='shapes') {
       drag = true;
       firstpos = [evt.clientX,evt.clientY];
     }
   };
-  TransformArea.onmouseup = (evt)=>{
+  TransformArea.onpointerup = (evt)=>{
     if (!drag) return;
     drag = false;
     let content = '';
