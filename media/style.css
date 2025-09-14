@@ -241,3 +241,9 @@ main {
   min-width: 0px;
   margin: 0px !important;
 }
+
+@media (max-width: 700px) {
+  .nomobile {
+    display: none;
+  }
+}
