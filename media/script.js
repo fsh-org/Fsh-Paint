@@ -189,7 +189,7 @@ window.selectLayer = (id)=>{
   document.getElementById('l-'+id).setAttribute('selected', true);
   if (document.getElementById(selectedLayer)) document.getElementById(selectedLayer).style.pointerEvents = '';
   selectedLayer = id;
-  TransformArea.querySelectorAll('canvas').forEach(canvas=>canvas.onmousedown=canvas.onmousemove=canvas.onmouseup=canvas.onmouseenter=canvas.onmouseleave=()=>{});
+  TransformArea.querySelectorAll('canvas').forEach(canvas=>canvas.onpointerdown=canvas.onpointermove=canvas.onpointerup=canvas.onpointercancel=()=>{});
   document.getElementById(id).style.pointerEvents = 'all';
   if (type==='draw') {
     if (!['pencil','eraser'].includes(tool)) window.setTool('pencil');
@@ -224,6 +224,7 @@ window.deleteLayer = (id)=>{
   trysave();
 };
 window.renameLayer = (_this, id, name, type)=>{
+  LayersArea.classList.remove('contracted')
   _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()">`;
   LayersArea.querySelector('div.list input.new').focus();
   LayersArea.querySelector('div.list input.new').select();
@@ -313,7 +314,14 @@ function handleActiveCanvas(canvas) {
     pointers.set(evt.pointerId, { x: evt.clientX, y: evt.clientY, button: evt.button });
     if (evt.button===1) TransformArea.style.cursor = 'move';
   };
-  canvas.onpointermove = (evt)=>{
+  canvas.onpointermove = (evt, coal=true)=>{
+    if (coal) {
+      let events = evt.getCoalescedEvents();
+      if (events) {
+        events.forEach(event=>{canvas.onpointermove(event, false)});
+        return;
+      }
+    }
     if (!pointers.has(evt.pointerId)) return;
     let pointer = pointers.get(evt.pointerId);
     if (pointer.button===1) {
@@ -487,7 +495,7 @@ function mzinter() {
   document.getElementById('preview').style.height = 'unset';
 
   // Focus
-  FullArea.onmousedown = ()=>{
+  FullArea.onpointerdown = ()=>{
     if (['input','select'].includes(document.activeElement.tagName.toLowerCase())) {
       document.activeElement.blur();
     }
