@@ -94,7 +94,7 @@ function setActions() {
 
 // Tools
 let tool = 'pencil';
-window.tooloptions = { size: 10, step: 0, shape: 'square' };
+window.tooloptions = { size: 20, step: 0, shape: 'square' };
 const ExtraTool = document.getElementById('extra');
 const shapes = [
   { name: 'square', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect width="256" height="256" rx="20"/></svg>' },
@@ -198,7 +198,7 @@ window.selectLayer = (id)=>{
     document.getElementById('t-select').style.display = 'none';
     document.getElementById('t-shapes').style.display = 'none';
     handleActiveCanvas(document.getElementById(id));
-  } else {
+  } else if (type==='shapes') {
     if (!['select','shapes'].includes(tool)) window.setTool('select');
     document.getElementById('t-pencil').style.display = 'none';
     document.getElementById('t-eraser').style.display = 'none';
@@ -350,7 +350,7 @@ function handleActiveCanvas(canvas) {
   };
   canvas.onpointerup = canvas.onpointercancel = (evt)=>{
     canvas.releasePointerCapture(evt.pointerId);
-    if (!pointers.get(evt.pointerId).button===1) TransformArea.style.cursor = '';
+    if (pointers.get(evt.pointerId).button===1) TransformArea.style.cursor = '';
     pointers.delete(evt.pointerId);
   };
 }
@@ -384,7 +384,7 @@ window.svgclick = (_this)=>{
     FullArea.onclick = (evt)=>{
       if (evt.target===_this) return;
       _this.classList.remove('select');
-      if (_this.parentElement!==evt.target&&_this.parentElement.contains(evt.target)) {
+      if (_this.parentElement!==evt.target&&_this.parentElement&&_this.parentElement.contains(evt.target)) {
         window.svgprevc = prevc;
         return;
       }
@@ -446,7 +446,9 @@ function putImage(file, oevt) {
     let b = document.getElementById(layer.id).getBoundingClientRect();
     let img = new Image();
     img.onload = ()=>{
-      if (layer.type==='shapes') {
+      if (layer.type==='draw') {
+        document.getElementById(layer.id).getContext('2d').drawImage(img, globalXToLocal(oevt.clientX,b), globalYToLocal(oevt.clientY,b));
+      } else if (layer.type==='shapes') {
         document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<image href="${reader.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" x="${globalXToLocal(oevt.clientX,b)}" y="${globalYToLocal(oevt.clientY,b)}"></image>`)
       }
     };
@@ -478,6 +480,7 @@ let x = 0;
 let y = 0;
 let zoom = 1;
 let woh = true;
+const Cursor = document.getElementById('cursor');
 const gcd = (a,b)=>b===0?a:gcd(b,a%b);
 function transform() { // Apply transforms
   TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%) scale(${zoom}) translate(${x}px, ${y}px)`;
@@ -500,13 +503,42 @@ function mzinter() {
       document.activeElement.blur();
     }
   };
+  // Move
+  FullArea.onpointermove = (evt)=>{
+    if (evt.pointerType==='touch') return;
+    let b = TransformArea.getBoundingClientRect();
+    Cursor.style.left = (globalXToLocal(evt.clientX,b)/(window.projectdata.width*zoom)*b.width).toFixed(2)+'px';
+    Cursor.style.top = (globalYToLocal(evt.clientY,b)/(window.projectdata.height*zoom)*b.height).toFixed(2)+'px';
+    switch(tool) {
+      case 'pencil':
+      case 'eraser':
+        Cursor.style.display = '';
+        Cursor.style.width = Cursor.style.height = Math.round(document.getElementById('e-size').value*(TransformArea.offsetWidth/window.projectdata.width))+'px';
+        Cursor.style.borderRadius = document.getElementById('e-cap').value==='round'?'100rem':'0px';
+        if (TransformArea.style.cursor==='crosshair') TransformArea.style.cursor = '';
+        break;
+      case 'select':
+        Cursor.style.display = 'none';
+        if (TransformArea.style.cursor!=='move') TransformArea.style.cursor = 'crosshair';
+        break;
+      case 'shapes':
+        Cursor.style.display = '';
+        Cursor.style.width = '15px';
+        Cursor.style.height = '15px';
+        Cursor.style.borderRadius = window.tooloptions.shape==='square'?'0px':'100rem';
+        if (TransformArea.style.cursor==='crosshair') TransformArea.style.cursor = '';
+        break;
+    }
+  };
   // On scroll zoom
-  FullArea.onwheel = (evt)=>{
+  FullArea.addEventListener('wheel', (evt)=>{
     if (evt.ctrlKey) evt.preventDefault();
+  }, { passive: false });
+  FullArea.addEventListener('wheel', (evt)=>{
     zoom += evt.deltaY/-(evt.shiftKey?500:(evt.altKey?2000:1000));
     zoom = Math.max(parseFloat(zoom.toFixed(5)), 0.1);
     transform();
-  };
+  }, { passive: true });
   // Keybinds
   document.onkeydown = (evt)=>{
     if (['input','select'].includes(document.activeElement.tagName.toLowerCase())) return;

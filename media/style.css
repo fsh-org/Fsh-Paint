@@ -163,7 +163,7 @@ main {
   height: 100%;
   background: repeating-conic-gradient(var(--bg-2) 0 25%, var(--bg-0) 0 50%) 0 / 25px 25px;
 }
-#transforms > * {
+#transforms > *:not(#cursor) {
   position: absolute;
   inset: 0px;
   width: 100%;
@@ -181,6 +181,14 @@ main {
 }
 #transforms > svg .select:not(line) {
   stroke-width: 5px;
+}
+#cursor {
+  position: absolute;
+  display: flex;
+  border: 2px var(--text-1) solid;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 9999;
 }
 #preview {
   width: 100%;
