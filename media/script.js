@@ -164,6 +164,7 @@ const visibilityIcons = {
 };
 const FullArea = document.getElementById('area');
 const TransformArea = document.getElementById('transforms');
+const LayersArea = document.getElementById('layers');
 let selectedLayer = '';
 window.createLayer = (type)=>{
   let id = Math.round(Math.random()*10**9).toString(36);
@@ -173,13 +174,13 @@ window.createLayer = (type)=>{
   } else if (type==='shapes') {
     TransformArea.insertAdjacentHTML('beforeend', `<svg id="${id}" width="${window.projectdata.width}" height="${window.projectdata.height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${window.projectdata.width} ${window.projectdata.height}"></svg>`);
   }
-  document.querySelector('#layers div.list').insertAdjacentHTML('afterbegin', `<div id="l-${id}"${id===selectedLayer?' selected':''}>
+  LayersArea.querySelector('div.list').insertAdjacentHTML('afterbegin', `<div id="l-${id}"${id===selectedLayer?' selected':''}>
   <button onclick="window.selectLayer('${id}')">${layerIcons[type]??''} <input class="new" value="New layer" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()"></button>
   <button onclick="window.togvisLayer('${id}', this)" class="other">${visibilityIcons.false}</button>
   <button onclick="window.deleteLayer('${id}')" class="other">x</button>
 </div>`);
-  document.querySelector('#layers div.list input.new').focus();
-  document.querySelector('#layers div.list input.new').select();
+  LayersArea.querySelector('div.list input.new').focus();
+  LayersArea.querySelector('div.list input.new').select();
   window.selectLayer(id);
   trysave();
 };
@@ -225,18 +226,21 @@ window.deleteLayer = (id)=>{
 };
 window.renameLayer = (_this, id, name, type)=>{
   _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()">`;
-  document.querySelector('#layers div.list input.new').focus();
-  document.querySelector('#layers div.list input.new').select();
+  LayersArea.querySelector('div.list input.new').focus();
+  LayersArea.querySelector('div.list input.new').select();
 };
 function showLayers() {
-  document.querySelector('#layers div.list').innerHTML = window.projectdata.layers
+  LayersArea.querySelector('div.list').innerHTML = window.projectdata.layers
     .map(layer=>`<div id="l-${layer.id}"${layer.hidden?' style="color:var(--text-3)"':''}${layer.id===selectedLayer?' selected':''}>
   <button onclick="window.selectLayer('${layer.id}')" ondblclick="window.renameLayer(this, '${layer.id}', '${layer.name}', '${layer.type}')">${layerIcons[layer.type]??''} ${layer.name}</button>
   <button onclick="window.togvisLayer('${layer.id}', this)" class="other">${visibilityIcons[layer.hidden.toString()]}</button>
   <button onclick="window.deleteLayer('${layer.id}')" class="other">x</button>
 </div>`)
     .join('')||'No layers, create one';
-  let instance = tippy(document.querySelector('#layers button.add'), {
+  LayersArea.querySelector('button.toggle').onclick = ()=>{
+    LayersArea.classList.toggle('contracted');
+  };
+  let instance = tippy(LayersArea.querySelector('button.add'), {
     allowHTML: true,
     content: `<button onclick="window.createLayer('draw')">${layerIcons.draw} Free draw</button>
 <button onclick="window.createLayer('shapes')">${layerIcons.shapes} Shapes</button>`,
@@ -306,6 +310,7 @@ function handleActiveCanvas(canvas) {
   ctx.imageSmoothingEnabled = false;
   canvas.onpointerdown = (evt)=>{
     evt.preventDefault();
+    canvas.setPointerCapture(evt.pointerId);
     mouse[evt.button] = true;
     lastpos = [evt.clientX, evt.clientY];
     if (mouse[1]) TransformArea.style.cursor = 'move';
@@ -332,25 +337,9 @@ function handleActiveCanvas(canvas) {
     }
   };
   canvas.onpointerup = (evt)=>{
+    canvas.releasePointerCapture(evt.pointerId);
     mouse[evt.button] = false;
     if (!mouse[1]) TransformArea.style.cursor = '';
-  };
-  canvas.onpointerenter = (evt)=>{
-    mouse = [(evt.buttons>>0&1)===1, (evt.buttons>>1&1)===1, (evt.buttons>>2&1)===1];
-    lastpos = [evt.clientX, evt.clientY];
-    if (mouse[1]) TransformArea.style.cursor = 'move';
-  };
-  canvas.onpointerleave = (evt)=>{
-    if (mouse[0]) {
-      let b = canvas.getBoundingClientRect();
-      ctx.beginPath();
-      ctx.moveTo(globalXToLocal(lastpos[0],b), globalYToLocal(lastpos[1],b));
-      ctx.lineTo(globalXToLocal(evt.clientX,b), globalYToLocal(evt.clientY,b));
-      ctx.stroke();
-      trysave();
-    }
-    mouse = [false, false, false];
-    TransformArea.style.cursor = '';
   };
 }
 window.svgactive = null;
@@ -440,16 +429,16 @@ function handleActiveSVG(svg) {
 // Drawing images
 function putImage(file, oevt) {
   const reader = new FileReader();
-  reader.onload = function(evt) {
+  reader.onload = function() {
     let layer = window.projectdata.layers.find(l=>l.id===selectedLayer);
     let b = document.getElementById(layer.id).getBoundingClientRect();
     let img = new Image();
     img.onload = ()=>{
       if (layer.type==='shapes') {
-        document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<image href="${evt.target.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" x="${globalXToLocal(oevt.clientX,b)}" y="${globalYToLocal(oevt.clientY,b)}"></image>`)
+        document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<image href="${reader.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" x="${globalXToLocal(oevt.clientX,b)}" y="${globalYToLocal(oevt.clientY,b)}"></image>`)
       }
     };
-    img.src = evt.target.result;
+    img.src = reader.result;
   };
   reader.readAsDataURL(file);
 }
@@ -560,7 +549,7 @@ function mzinter() {
 
 // Projects
 window.loadProject = (id)=>{
-  document.getElementById('hello').close();
+  HelloModal.close();
   let tx = db.transaction('projectdata', 'readwrite');
   let store = tx.objectStore('projectdata');
   let request = store.get(id);
@@ -610,7 +599,7 @@ function showProjects() {
   getReq.onsuccess = ()=>{
     document.querySelector('#hello div.list').innerHTML = getReq.result
       .map(pr=>`<div class="project">
-  ${pr.thumbnail?`<img src="${pr.thumbnail}"><span style="flex:1"></span>`:''}
+  ${pr.thumbnail?`<span style="flex:1"></span><img src="${pr.thumbnail}"><span style="flex:1"></span>`:''}
   <span>${sanitizeHTML(pr.name)}</span>
   <span class="small">${pr.width}x${pr.height}</span>
   <span>
@@ -633,6 +622,7 @@ dbRequest.onupgradeneeded = function(e) {
     db.createObjectStore('projectdata', { keyPath: 'id', autoIncrement: false });
   }
 };
+const HelloModal = document.getElementById('hello');
 dbRequest.onsuccess = function(e) {
   let db = e.target.result;
   window.db = db;
@@ -642,12 +632,44 @@ dbRequest.onsuccess = function(e) {
   showColors();
 
   // Hello modal
-  document.getElementById('hello').showModal();
-  document.querySelector('#hello button.new').onclick = ()=>{
+  HelloModal.showModal();
+  HelloModal.querySelector('button.new').onclick = ()=>{
     document.getElementById('newp').showModal();
     document.querySelector('#newp input.name').focus();
     document.querySelector('#newp input.name').select();
   };
+  HelloModal.querySelector('button.img').onclick = ()=>{
+    HelloModal.querySelector('input').click();
+  };
+  HelloModal.querySelector('input').onchange = (evt)=>{
+    let file = evt.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function() {
+      let img = new Image();
+      img.onload = ()=>{
+        let tx = db.transaction(['projects','projectdata'], 'readwrite');
+        let pstore = tx.objectStore('projects');
+        let dstore = tx.objectStore('projectdata');
+        let pidreq = pstore.add({ name: file.name, width: img.width, height: img.height, thumbnail: reader.result });
+        let pid;
+        pidreq.onsuccess = (e) => {
+          pid = e.target.result;
+          dstore.add({
+            id: pid,
+            name: file.name,
+            width: img.width,
+            height: img.height,
+            lastsave: Date.now(),
+            layers: [{ id: 'base', type: 'draw', name: 'Base', hidden: false, data: reader.result }]
+          });
+        };
+        tx.oncomplete = ()=>{window.loadProject(pid)};
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
   document.querySelector('#newp button.create').onclick = ()=>{
     let tx = db.transaction(['projects','projectdata'], 'readwrite');
     let pstore = tx.objectStore('projects');
@@ -655,12 +677,7 @@ dbRequest.onsuccess = function(e) {
     let name = document.querySelector('#newp input.name').value;
     let width = Math.max(Number(document.querySelector('#newp input.x').value)||1, 1);
     let height = Math.max(Number(document.querySelector('#newp input.y').value)||1, 1);
-    let pidreq = pstore.add({
-      name,
-      width,
-      height,
-      thumbnail: ''
-    });
+    let pidreq = pstore.add({ name, width, height, thumbnail: '' });
     let pid;
     pidreq.onsuccess = (e) => {
       pid = e.target.result;

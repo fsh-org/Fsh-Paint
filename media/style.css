@@ -5,8 +5,12 @@ body {
   height: 100dvh;
   overflow: hidden;
 }
+svg {
+  flex-shrink: 0;
+}
 
 vr {
+  flex-shrink: 0;
   width: 2px;
   height: 80%;
   background-color: var(--bg-3);
@@ -70,16 +74,20 @@ input[type="number"] {
 }
 
 nav {
+  flex-shrink: 0;
   display: flex;
   gap: 10px;
   align-items: center;
   height: 62px;
+  overflow: auto hidden;
 }
 nav div {
+  flex-shrink: 0;
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
   align-items: center;
+  height: 100%;
 }
 
 #actions button, #tools button, #rotatecolor, #colors button, #extra button {
@@ -123,7 +131,7 @@ nav div {
   gap: 1px;
   max-width: calc(var(--colors-size) * var(--colors-columns) + 1px * var(--colors-columns) + 8px);
   max-height: calc(var(--colors-size) * var(--colors-rows) + 1px * var(--colors-rows));
-  overflow: hidden auto;
+  overflow: auto;
 }
 #colors button {
   width: var(--colors-size);
@@ -161,6 +169,7 @@ main {
   width: 100%;
   height: 100%;
   pointer-events: none;
+  touch-action: none;
 }
 #transforms > canvas {
   display: block;
@@ -188,16 +197,26 @@ main {
   padding: 10px;
   border-radius: 1rem;
   background-color: var(--bg-2);
+  transition: width 500ms;
   box-sizing: border-box;
+  overflow: hidden;
+}
+#layers.contracted {
+  width: 50px;
 }
 #layers .list {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden auto;
 }
 #layers .bar {
   display: flex;
+  gap: 0px;
+  transition: gap 500ms;
+}
+#layers.contracted .bar {
+  gap: 10px;
 }
 #layers .bar h2 {
   flex: 1;
@@ -245,5 +264,21 @@ main {
 @media (max-width: 700px) {
   .nomobile {
     display: none;
+  }
+  nav {
+    gap: 2px;
+    height: 74px;
+  }
+  nav div {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0px;
+  }
+  #colors {
+    flex-direction: column;
+  }
+  #layers {
+    width: 50dvw;
+    height: calc(100dvh - 86px);
   }
 }

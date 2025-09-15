@@ -35,6 +35,8 @@
       <h2>Projects</h2>
       <div class="list">Loading...</div>
       <button class="new">New</button>
+      <button class="img">Open Image</button>
+      <input style="display:none" type="file" accept="image/*">
     </dialog>
     <dialog id="newp" closeby="any">
       <button onclick="this.parentElement.close()" class="modal-close">x</button>
@@ -108,6 +110,7 @@
       <div id="actions">
         <button action="save" aria-label="Save" title="Save"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect x="125" y="10" width="32" height="70" rx="8"/><path fill-rule="evenodd" clip-rule="evenodd" d="M20 0C8.95431 0 0 8.95431 0 20V236C0 247.046 8.95431 256 20 256H236C247.046 256 256 247.046 256 236V128V72.2843C256 66.9799 253.893 61.8929 250.142 58.1421L197.858 5.85786C194.107 2.10714 189.02 0 183.716 0H180C174.477 0 170 4.47715 170 10V80C170 85.5229 165.523 90 160 90H65C59.4772 90 55 85.5229 55 80V20C55 8.95431 46.0457 0 35 0H20ZM62 160C50.9543 160 42 168.954 42 180V215C42 226.046 50.9543 235 62 235H194C205.046 235 214 226.046 214 215V180C214 168.954 205.046 160 194 160H62Z"/></svg></button>
         <button action="export" aria-label="Export" title="Export"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M128 190V20" stroke-width="40" stroke-linecap="round" fill="none"/><path d="M127.861 212.999C131.746 213.035 135.642 211.571 138.606 208.607L209.317 137.896C212.291 134.922 213.753 131.011 213.708 127.114C213.708 127.076 213.71 127.038 213.71 127C213.71 118.716 206.994 112 198.71 112H57C48.7157 112 42 118.716 42 127C42 127.045 42.0006 127.089 42.001 127.134C41.961 131.024 43.4252 134.927 46.3936 137.896L117.104 208.607L117.381 208.876C120.312 211.662 124.092 213.037 127.861 212.999Z"/><rect y="226" width="256" height="30" rx="15"/></svg></button>
+        <button style="display:none" action="settings" aria-label="Settings" title="Settings"><svg width="20" height="20" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M128.601 218.742C178.384 218.742 218.742 178.385 218.742 128.601C218.742 78.8179 178.384 38.4604 128.601 38.4604C78.8175 38.4604 38.4601 78.8179 38.4601 128.601C38.4601 178.385 78.8175 218.742 128.601 218.742ZM128.601 167.061C149.842 167.061 167.061 149.842 167.061 128.601C167.061 107.36 149.842 90.141 128.601 90.141C107.36 90.141 90.1408 107.36 90.1408 128.601C90.1408 149.842 107.36 167.061 128.601 167.061Z"/><path d="M101.001 11.0292C101.507 4.79869 106.711 0 112.962 0H143.038C149.289 0 154.493 4.79868 154.999 11.0292L158 48H98L101.001 11.0292Z"/><path d="M101.001 244.971C101.507 251.201 106.711 256 112.962 256H143.038C149.289 256 154.493 251.201 154.999 244.971L158 208H98L101.001 244.971Z"/><path d="M244.971 101.001C251.201 101.507 256 106.711 256 112.962L256 143.038C256 149.289 251.201 154.493 244.971 154.999L208 158L208 98L244.971 101.001Z"/><path d="M11.0292 101.001C4.79869 101.507 -3.80751e-07 106.711 -6.5399e-07 112.962L-1.96869e-06 143.038C-2.24193e-06 149.289 4.79868 154.493 11.0292 154.999L48 158L48 98L11.0292 101.001Z"/><path d="M192.883 25.8341C197.645 21.7682 204.733 22.0472 209.16 26.4748L229.71 47.0245C234.137 51.4522 234.416 58.5399 230.351 63.3018L205.964 91.8637L164.321 50.2208L192.883 25.8341Z"/><path d="M26.135 192.008C22.0807 196.771 22.3646 203.849 26.7873 208.272L47.7285 229.213C52.1512 233.636 59.2294 233.92 63.9921 229.865L92.2857 205.78L50.2198 163.715L26.135 192.008Z"/><path d="M229.879 191.98C233.94 196.742 233.658 203.825 229.233 208.251L208.673 228.811C204.247 233.237 197.164 233.518 192.402 229.457L164.137 205.358L205.78 163.715L229.879 191.98Z"/><path d="M63.9921 26.1356C59.2293 22.0813 52.1512 22.3652 47.7284 26.7879L26.7874 47.7289C22.3647 52.1517 22.0808 59.2298 26.1351 63.9926L50.22 92.2862L92.2857 50.2205L63.9921 26.1356Z"/></svg></button>
       </div>
       <vr></vr>
       <div id="tools">
@@ -121,7 +124,7 @@
         <input type="color" id="primary" value="#ffffff">
         <input type="color" id="secondary" value="#000000">
       </div>
-      <button id="rotatecolor"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M72.7108 15L72.7107 241" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M129.932 72L74.7071 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M15.7782 72L71.0036 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M183 241L183 15" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M126.029 184L182.739 240.711" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M239.682 184L182.971 240.711" stroke-width="30" stroke-linecap="round" fill="none"/></svg></button>
+      <button id="rotatecolor" aria-label="Swap colors" title="Swap colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M72.7108 15L72.7107 241" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M129.932 72L74.7071 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M15.7782 72L71.0036 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M183 241L183 15" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M126.029 184L182.739 240.711" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M239.682 184L182.971 240.711" stroke-width="30" stroke-linecap="round" fill="none"/></svg></button>
       <div id="colors"></div>
       <vr></vr>
       <div id="extra" type="draw">
@@ -137,6 +140,7 @@
       <div id="layers">
         <img id="preview" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
         <div class="bar">
+          <button class="toggle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M219.274 117.64C227.201 122.273 227.201 133.727 219.274 138.36L36.0553 245.447C28.0555 250.123 18 244.353 18 235.087L18 20.9131C18 11.647 28.0554 5.87716 36.0553 10.5529L219.274 117.64Z"/></svg></button>
           <h2>Layers</h2>
           <button class="add">+</button>
         </div>
