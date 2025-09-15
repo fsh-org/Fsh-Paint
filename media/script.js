@@ -175,7 +175,7 @@ window.createLayer = (type)=>{
     TransformArea.insertAdjacentHTML('beforeend', `<svg id="${id}" width="${window.projectdata.width}" height="${window.projectdata.height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${window.projectdata.width} ${window.projectdata.height}"></svg>`);
   }
   LayersArea.querySelector('div.list').insertAdjacentHTML('afterbegin', `<div id="l-${id}"${id===selectedLayer?' selected':''}>
-  <button onclick="window.selectLayer('${id}')">${layerIcons[type]??''} <input class="new" value="New layer" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()"></button>
+  <button onclick="window.selectLayer('${id}')">${layerIcons[type]??''} <input class="new" value="New layer" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()"></button>
   <button onclick="window.togvisLayer('${id}', this)" class="other">${visibilityIcons.false}</button>
   <button onclick="window.deleteLayer('${id}')" class="other">x</button>
 </div>`);
@@ -225,7 +225,7 @@ window.deleteLayer = (id)=>{
   trysave();
 };
 window.renameLayer = (_this, id, name, type)=>{
-  _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()">`;
+  _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()">`;
   LayersArea.querySelector('div.list input.new').focus();
   LayersArea.querySelector('div.list input.new').select();
 };
@@ -234,11 +234,12 @@ function showLayers() {
     .map(layer=>`<div id="l-${layer.id}"${layer.hidden?' style="color:var(--text-3)"':''}${layer.id===selectedLayer?' selected':''}>
   <button onclick="window.selectLayer('${layer.id}')" ondblclick="window.renameLayer(this, '${layer.id}', '${layer.name}', '${layer.type}')">${layerIcons[layer.type]??''} ${layer.name}</button>
   <button onclick="window.togvisLayer('${layer.id}', this)" class="other">${visibilityIcons[layer.hidden.toString()]}</button>
-  <button onclick="window.deleteLayer('${layer.id}')" class="other">x</button>
+  <button onclick="window.deleteLayer('${layer.id}')" class="other"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.6776 7.32227C32.9145 -2.44063 17.0852 -2.44077 7.32214 7.32227C-2.44082 17.0853 -2.44069 32.9146 7.32214 42.6777L92.2616 127.617L7.32214 212.557C-2.44091 222.32 -2.44083 238.149 7.32214 247.912C17.0852 257.675 32.9145 257.675 42.6776 247.912L127.617 162.973L212.557 247.912C222.32 257.675 238.149 257.675 247.912 247.912C257.675 238.149 257.675 222.32 247.912 212.557L162.973 127.617L247.912 42.6777C257.675 32.9146 257.675 17.0853 247.912 7.32227C238.149 -2.44079 222.32 -2.44068 212.557 7.32227L127.617 92.2617L42.6776 7.32227Z"/></svg></button>
 </div>`)
     .join('')||'No layers, create one';
   LayersArea.querySelector('button.toggle').onclick = ()=>{
     LayersArea.classList.toggle('contracted');
+    LayersArea.querySelector('button.toggle').style.transform = LayersArea.classList.contains('contracted')?'rotateY(180deg)':'';
   };
   let instance = tippy(LayersArea.querySelector('button.add'), {
     allowHTML: true,
@@ -303,43 +304,47 @@ function globalYToLocal(y, b) {
   return (y-b.top)/b.height*window.projectdata.height;
 }
 
-let mouse = [false, false, false];
 function handleActiveCanvas(canvas) {
-  let lastpos;
+  let pointers = new Map();
   let ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   canvas.onpointerdown = (evt)=>{
     evt.preventDefault();
     canvas.setPointerCapture(evt.pointerId);
-    mouse[evt.button] = true;
-    lastpos = [evt.clientX, evt.clientY];
-    if (mouse[1]) TransformArea.style.cursor = 'move';
+    pointers.set(evt.pointerId, { x: evt.clientX, y: evt.clientY, button: evt.button });
+    if (evt.button===1) TransformArea.style.cursor = 'move';
   };
   canvas.onpointermove = (evt)=>{
-    if (mouse[1]) {
-      x += (evt.clientX-lastpos[0])/zoom;
-      y += (evt.clientY-lastpos[1])/zoom;
-      lastpos = [evt.clientX, evt.clientY];
+    if (!pointers.has(evt.pointerId)) return;
+    let pointer = pointers.get(evt.pointerId);
+    if (pointer.button===1) {
+      x += (evt.clientX-pointer.x)/zoom;
+      y += (evt.clientY-pointer.y)/zoom;
+      pointer.x = evt.clientX;
+      pointer.y = evt.clientY;
+      pointers.set(evt.pointerId,pointer);
       transform();
-    } else if (mouse[0]) {
-      if ((document.getElementById('e-step').value||0)>distance(lastpos, [evt.clientX, evt.clientY])) return;
+    } else if (pointer.button===0) {
+      if ((document.getElementById('e-step').value||0)>distance([pointer.x,pointer.y], [evt.clientX,evt.clientY])) return;
       let b = canvas.getBoundingClientRect();
       ctx.globalCompositeOperation = tool==='eraser'?'destination-out':'source-over';
       ctx.strokeStyle = primary.value;
       ctx.lineWidth = document.getElementById('e-size').value||10;
       ctx.lineCap = document.getElementById('e-cap').value||'round';
       ctx.beginPath();
-      ctx.moveTo(globalXToLocal(lastpos[0],b), globalYToLocal(lastpos[1],b));
+      ctx.moveTo(globalXToLocal(pointer.x,b), globalYToLocal(pointer.y,b));
       ctx.lineTo(globalXToLocal(evt.clientX,b), globalYToLocal(evt.clientY,b));
       ctx.stroke();
-      lastpos = [evt.clientX, evt.clientY];
+      pointer.x = evt.clientX;
+      pointer.y = evt.clientY;
+      pointers.set(evt.pointerId,pointer);
       trysave();
     }
   };
-  canvas.onpointerup = (evt)=>{
+  canvas.onpointerup = canvas.onpointercancel = (evt)=>{
     canvas.releasePointerCapture(evt.pointerId);
-    mouse[evt.button] = false;
-    if (!mouse[1]) TransformArea.style.cursor = '';
+    if (!pointers.get(evt.pointerId).button===1) TransformArea.style.cursor = '';
+    pointers.delete(evt.pointerId);
   };
 }
 window.svgactive = null;

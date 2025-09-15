@@ -170,6 +170,7 @@ main {
   height: 100%;
   pointer-events: none;
   touch-action: none;
+  transition: opacity var(--time-2);
 }
 #transforms > canvas {
   display: block;
@@ -197,7 +198,7 @@ main {
   padding: 10px;
   border-radius: 1rem;
   background-color: var(--bg-2);
-  transition: width 500ms;
+  transition: width var(--time-1);
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -213,7 +214,7 @@ main {
 #layers .bar {
   display: flex;
   gap: 0px;
-  transition: gap 500ms;
+  transition: gap var(--time-1);
 }
 #layers.contracted .bar {
   gap: 10px;
@@ -222,8 +223,16 @@ main {
   flex: 1;
 }
 #layers .bar > button {
-  font-size: 125%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin: 0px;
+  padding: 2px;
   border: none;
+  outline: none;
 }
 #layers .list div {
   display: flex;
@@ -239,6 +248,9 @@ main {
   color: currentColor;
   border: none;
   outline: none;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: var(--time-2);
 }
 #layers .list button:hover {
   color: var(--bg-1);
@@ -247,10 +259,17 @@ main {
   flex: 1;
 }
 #layers .list div button.other {
+  width: 0px;
+  padding: 0px;
   opacity: 0;
 }
 #layers .list div:hover button.other {
+  width: 30px;
+  padding: 5px;
   opacity: 1;
+}
+#layers.contracted .list div button.other {
+  display: none;
 }
 #layers .list input {
   flex: 1;
@@ -280,5 +299,10 @@ main {
   #layers {
     width: 50dvw;
     height: calc(100dvh - 86px);
+  }
+  #layers .list div button.other {
+    width: 30px;
+    padding: 5px;
+    opacity: 1;
   }
 }
