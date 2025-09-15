@@ -68,7 +68,7 @@ function save() {
 }
 function trysave() {
   if (savededupe) clearTimeout(savededupe);
-  savededupe = setTimeout(()=>{
+  savededupe = setTimeout(async()=>{
     savededupe = null;
     save()
   }, 10);
@@ -174,10 +174,9 @@ window.createLayer = (type)=>{
   } else if (type==='shapes') {
     TransformArea.insertAdjacentHTML('beforeend', `<svg id="${id}" width="${window.projectdata.width}" height="${window.projectdata.height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${window.projectdata.width} ${window.projectdata.height}"></svg>`);
   }
+  if (LayersArea.querySelector('div.list').innerText.includes('No layers')) LayersArea.querySelector('div.list').innerText = '';
   LayersArea.querySelector('div.list').insertAdjacentHTML('afterbegin', `<div id="l-${id}"${id===selectedLayer?' selected':''}>
   <button onclick="window.selectLayer('${id}')">${layerIcons[type]??''} <input class="new" value="New layer" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()"></button>
-  <button onclick="window.togvisLayer('${id}', this)" class="other">${visibilityIcons.false}</button>
-  <button onclick="window.deleteLayer('${id}')" class="other">x</button>
 </div>`);
   LayersArea.querySelector('div.list input.new').focus();
   LayersArea.querySelector('div.list input.new').select();
@@ -188,7 +187,7 @@ window.selectLayer = (id)=>{
   let type = window.projectdata.layers.find(l=>l.id===id).type;
   document.getElementById('l-'+selectedLayer)?.removeAttribute('selected');
   document.getElementById('l-'+id).setAttribute('selected', true);
-  document.getElementById(selectedLayer).style.pointerEvents = '';
+  if (document.getElementById(selectedLayer)) document.getElementById(selectedLayer).style.pointerEvents = '';
   selectedLayer = id;
   TransformArea.querySelectorAll('canvas').forEach(canvas=>canvas.onmousedown=canvas.onmousemove=canvas.onmouseup=canvas.onmouseenter=canvas.onmouseleave=()=>{});
   document.getElementById(id).style.pointerEvents = 'all';
