@@ -231,10 +231,20 @@ window.togvisLayer = (id,_this)=>{
   document.getElementById(id).style.opacity = hidden?'0':1;
   trysave();
 };
+window.rasterLayer = async(id)=>{
+  let idx = window.projectdata.layers.findIndex(l=>l.id===id);
+  window.projectdata.layers[idx].type = 'draw';
+  let img = await svgToImg(document.getElementById(id));
+  document.getElementById(id).outerHTML = `<canvas id="${id}" width="${window.projectdata.width}" height="${window.projectdata.height}"></canvas>`;
+  document.getElementById(id).getContext('2d').drawImage(img, 0, 0);
+  window.selectLayer(id);
+  showLayers();
+  trysave();
+};
 window.deleteLayer = (id)=>{
   window.projectdata.layers = window.projectdata.layers.filter(l=>l.id!==id);
   document.getElementById(id).remove();
-  selectedLayer = window.projectdata.layers[0]?.id??'';
+  if (selectedLayer===id) window.selectLayer(window.projectdata.layers[0]?.id??'');
   showLayers();
   trysave();
 };
@@ -249,14 +259,16 @@ function showLayers() {
     .map(layer=>`<div id="l-${layer.id}"${layer.hidden?' style="color:var(--text-3)"':''}${layer.id===selectedLayer?' selected':''}>
   <button onclick="window.selectLayer('${layer.id}')" ondblclick="window.renameLayer(this, '${layer.id}', '${layer.name}', '${layer.type}')">${layerIcons[layer.type]??''} ${layer.name}</button>
   <button onclick="window.togvisLayer('${layer.id}', this)" class="other">${visibilityIcons[layer.hidden.toString()]}</button>
-  <button class="other" data-id="${layer.id}"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path fill-rule="evenodd" clip-rule="evenodd" d="M128 158C111.431 158 98 144.569 98 128C98 111.431 111.431 98 128 98C144.569 98 158 111.431 158 128C158 144.569 144.569 158 128 158ZM128 60C111.432 60 98.0001 46.5685 98.0001 30C98.0001 13.4315 111.432 -5.87112e-07 128 -1.31135e-06C144.569 -2.03558e-06 158 13.4315 158 30C158 46.5685 144.569 60 128 60ZM98 226C98 242.569 111.431 256 128 256C144.569 256 158 242.569 158 226C158 209.431 144.569 196 128 196C111.431 196 98 209.431 98 226Z"/></svg></button>
+  <button class="other" data-id="${layer.id}" data-type="${layer.type}"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path fill-rule="evenodd" clip-rule="evenodd" d="M128 158C111.431 158 98 144.569 98 128C98 111.431 111.431 98 128 98C144.569 98 158 111.431 158 128C158 144.569 144.569 158 128 158ZM128 60C111.432 60 98.0001 46.5685 98.0001 30C98.0001 13.4315 111.432 -5.87112e-07 128 -1.31135e-06C144.569 -2.03558e-06 158 13.4315 158 30C158 46.5685 144.569 60 128 60ZM98 226C98 242.569 111.431 256 128 256C144.569 256 158 242.569 158 226C158 209.431 144.569 196 128 196C111.431 196 98 209.431 98 226Z"/></svg></button>
 </div>`)
     .join('')||'No layers, create one';
   LayersArea.querySelectorAll('div.list button.other[data-id]').forEach(btn=>{
     let id = btn.getAttribute('data-id');
+    let type = btn.getAttribute('data-type');
     tippy(btn, {
       allowHTML: true,
-      content: `<button onclick="window.deleteLayer('${id}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.6776 7.32227C32.9145 -2.44063 17.0852 -2.44077 7.32214 7.32227C-2.44082 17.0853 -2.44069 32.9146 7.32214 42.6777L92.2616 127.617L7.32214 212.557C-2.44091 222.32 -2.44083 238.149 7.32214 247.912C17.0852 257.675 32.9145 257.675 42.6776 247.912L127.617 162.973L212.557 247.912C222.32 257.675 238.149 257.675 247.912 247.912C257.675 238.149 257.675 222.32 247.912 212.557L162.973 127.617L247.912 42.6777C257.675 32.9146 257.675 17.0853 247.912 7.32227C238.149 -2.44079 222.32 -2.44068 212.557 7.32227L127.617 92.2617L42.6776 7.32227Z"/></svg> Delete</button>`,
+      content: (type==='shapes'?`<button onclick="window.rasterLayer('${id}')">Rasterize</button>`:'')+
+`<button onclick="window.deleteLayer('${id}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.6776 7.32227C32.9145 -2.44063 17.0852 -2.44077 7.32214 7.32227C-2.44082 17.0853 -2.44069 32.9146 7.32214 42.6777L92.2616 127.617L7.32214 212.557C-2.44091 222.32 -2.44083 238.149 7.32214 247.912C17.0852 257.675 32.9145 257.675 42.6776 247.912L127.617 162.973L212.557 247.912C222.32 257.675 238.149 257.675 247.912 247.912C257.675 238.149 257.675 222.32 247.912 212.557L162.973 127.617L247.912 42.6777C257.675 32.9146 257.675 17.0853 247.912 7.32227C238.149 -2.44079 222.32 -2.44068 212.557 7.32227L127.617 92.2617L42.6776 7.32227Z"/></svg> Delete</button>`,
       interactive: true,
       trigger: 'click',
       placement: 'left-start',
@@ -358,7 +370,7 @@ function handleActiveCanvas(canvas) {
       pointers.set(evt.pointerId,pointer);
       transform();
     } else if (pointer.button===0) {
-      if ((document.getElementById('e-step').value||0)>distance([pointer.x,pointer.y], [evt.clientX,evt.clientY])) return;
+      if ((document.getElementById('e-step')?.value||0)>distance([pointer.x,pointer.y], [evt.clientX,evt.clientY])) return;
       let b = canvas.getBoundingClientRect();
       ctx.globalCompositeOperation = tool==='eraser'?'destination-out':'source-over';
       ctx.strokeStyle = primary.value;
@@ -539,7 +551,7 @@ function mzinter() {
       case 'pencil':
       case 'eraser':
         Cursor.style.display = '';
-        Cursor.style.width = Cursor.style.height = Math.round(document.getElementById('e-size').value*(TransformArea.offsetWidth/window.projectdata.width))+'px';
+        Cursor.style.width = Cursor.style.height = Math.round((document.getElementById('e-size')?.value||10)*(TransformArea.offsetWidth/window.projectdata.width))+'px';
         Cursor.style.borderRadius = document.getElementById('e-cap').value==='round'?'100rem':'0px';
         if (TransformArea.style.cursor==='crosshair') TransformArea.style.cursor = '';
         break;
