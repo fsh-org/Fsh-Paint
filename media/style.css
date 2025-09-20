@@ -94,6 +94,10 @@ nav div {
   border: none;
   outline: none;
 }
+#tools button[selected], #extra button[selected] {
+  color: var(--text-1);
+  background-color: var(--bg-2);
+}
 
 #export .type button {
   color: var(--text-1);
@@ -104,11 +108,6 @@ nav div {
 }
 #export .type button[selected] {
   background-color: var(--bg-3);
-}
-
-#tools button[selected] {
-  color: var(--text-1);
-  background-color: var(--bg-2);
 }
 
 #currentcolors {

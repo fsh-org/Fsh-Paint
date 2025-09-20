@@ -49,7 +49,7 @@ function save() {
   let tx = db.transaction(['projectdata'], 'readwrite');
   let dstore = tx.objectStore('projectdata');
   dstore.put(window.projectdata);
-  compositeLayers(true).then(res=>res.convertToBlob({ type: 'image/webp', quality: 0.5 })).then(blob=>{
+  compositeLayers(true).then(res=>res.convertToBlob()).then(blob=>{
     let reader = new FileReader();
     reader.onload = ()=>{
       document.getElementById('preview').src = reader.result;
@@ -125,7 +125,15 @@ window.setTool = (tol, _this)=>{
     case 'shapes':
       if (ExtraTool.getAttribute('type')!=='shapes') {
         ExtraTool.setAttribute('type', 'shapes');
-        ExtraTool.innerHTML = shapes.map(s=>`<button onclick="window.tooloptions.shape='${s.name}'" aria-label="${s.name}" title="${s.name}">${s.svg}</button>`).join('');
+        ExtraTool.innerHTML = shapes.map(s=>`<button name="${s.name}"${window.tooloptions.shape===s.name?' selected':''} aria-label="${s.name}" title="${s.name}">${s.svg}</button>`).join('');
+        ExtraTool.querySelectorAll('button').forEach(btn=>{
+          btn.onclick = ()=>{
+            let name = btn.getAttribute('name');
+            window.tooloptions.shape = name;
+            document.querySelector('#extra button[selected]').removeAttribute('selected');
+            btn.setAttribute('selected', true);
+          };
+        });
       }
       break;
   }
