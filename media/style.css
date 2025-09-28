@@ -85,7 +85,7 @@ nav {
   display: flex;
   gap: 10px;
   align-items: center;
-  height: 62px;
+  height: 74px;
   overflow: auto hidden;
 }
 nav div {
@@ -121,13 +121,20 @@ nav div {
   flex-direction: column;
   justify-content: center;
 }
-#currentcolors input {
-  padding: 0px !important;
-  margin: 0px !important;
+#currentcolors button {
+  width: 25px;
+  height: 25px;
+  outline: none;
+  background-color: var(--color);
 }
-
-#rotatecolor {
-  margin-left: -8px;
+#colorpicker {
+  position: absolute;
+  top: 74px;
+  margin: 0px;
+  z-index: 12;
+}
+.IroColorPicker svg {
+  transition: none;
 }
 
 #colors {
@@ -187,6 +194,9 @@ main {
 }
 #transforms > svg .select:not(line) {
   stroke-width: 5px;
+}
+#transforms > svg > * {
+  transition: fill 500ms, stroke 500ms;
 }
 #cursor {
   position: absolute;
@@ -300,7 +310,6 @@ main {
   }
   nav {
     gap: 2px;
-    height: 74px;
   }
   nav div {
     flex-direction: column;

@@ -152,20 +152,56 @@ let colors = ['oklch(0.7404 0.1257 20.83)','oklch(0.7404 0.1257 67.83)','oklch(0
 'oklch(0.3813 0.1311 20.83)','oklch(0.5178 0.0966 67.83)','oklch(0.5504 0.1043 94.54)','oklch(0.4377 0.1256 140.47)','oklch(0.4618 0.1163 245.16)','oklch(0.3724 0.1487 308.19)','#000000'];
 let primary = document.getElementById('primary');
 let secondary = document.getElementById('secondary');
-window.setColor = (color)=>{
-  primary.value = color;
-  primary.dispatchEvent(new Event('input', { bubbles: true }));
+const colorPicker = document.getElementById('colorpicker');
+window.setColor = (color, what=primary)=>{
+  what.style.setProperty('--color', color);
+  what.dataset.value = color;
+  what.dispatchEvent(new Event('input', { bubbles: true }));
 };
+let boxPicker = new iro.ColorPicker("#colorpicker", {
+  width: 200,
+  layoutDirection: 'horizontal',
+  color: '#f00',
+  borderWidth: 1,
+  borderColor: 'var(--text-2)',
+  layout: [
+    { component: iro.ui.Box },
+    {
+      component: iro.ui.Slider,
+      options: {
+        id: 'hue-slider',
+        sliderType: 'hue'
+      }
+    },
+    {
+      component: iro.ui.Slider,
+      options: {
+        sliderType: 'alpha'
+      }
+    }
+  ]
+});
 function showColors() {
+  primary.onclick = secondary.onclick = (evt)=>{
+    if (colorPicker.open) colorPicker.close();
+    colorPicker.show();
+    colorPicker.style.left = (evt.target.getBoundingClientRect()).left.toFixed(2)+'px';
+    boxPicker.setColors([evt.target.dataset.value]);
+    let edit = (color)=>{window.setColor(color.hex8String, evt.target)};
+    boxPicker.on('input:change', edit);
+    colorPicker.onclose = ()=>{
+      boxPicker.off('input:change', edit);
+    };
+  };
+  document.getElementById('rotatecolor').onclick = ()=>{
+    let pi = primary.dataset.value;
+    window.setColor(secondary.dataset.value);
+    window.setColor(pi, secondary);
+  };
   document.getElementById('colors').innerHTML = colors.map(c=>{
     let name = c.startsWith('oklch(')?nameColor(oklchToHex(...c.slice(6,c.length-1).split(' '))):nameColor(c);
     return `<button onclick="window.setColor('${c.startsWith('oklch(')?oklchToHex(...c.slice(6,c.length-1).split(' ')):c}')" style="--color:${c}" aria-label="${name}" title="${name}"></button>`
   }).join('');
-  document.getElementById('rotatecolor').onclick = ()=>{
-    let pi = primary.value;
-    primary.value = secondary.value;
-    secondary.value = pi;
-  };
 }
 
 // Layers
@@ -373,7 +409,7 @@ function handleActiveCanvas(canvas) {
       if ((document.getElementById('e-step')?.value||0)>distance([pointer.x,pointer.y], [evt.clientX,evt.clientY])) return;
       let b = canvas.getBoundingClientRect();
       ctx.globalCompositeOperation = tool==='eraser'?'destination-out':'source-over';
-      ctx.strokeStyle = primary.value;
+      ctx.strokeStyle = primary.dataset.value;
       ctx.lineWidth = document.getElementById('e-size').value||10;
       ctx.lineCap = document.getElementById('e-cap').value||'round';
       ctx.beginPath();
@@ -393,18 +429,16 @@ function handleActiveCanvas(canvas) {
   };
 }
 window.svgactive = null;
-window.svgprevc = null;
 window.svgclick = (_this)=>{
   if (tool!=='select') return;
   window.svgactive = _this;
+  _this.parentElement.querySelector('.select')?.classList?.remove('select');
   _this.classList.add('select');
-  let prevc = primary.value;
-  window.svgprevc = prevc;
-  primary.value = _this.getAttribute((_this.tagName.toLowerCase()==='line')?'stroke':'fill');
   primary.oninput = ()=>{
-    _this.setAttribute((_this.tagName.toLowerCase()==='line')?'stroke':'fill', primary.value);
+    _this.setAttribute((_this.tagName.toLowerCase()==='line')?'stroke':'fill', primary.dataset.value);
     trysave();
   };
+  window.setColor(_this.getAttribute((_this.tagName.toLowerCase()==='line')?'stroke':'fill'));
   switch(_this.tagName.toLowerCase()) {
     case 'rect':
       ExtraTool.innerHTML = `<label>Roundness: <input type="number" value="${_this.getAttribute('rx')}" min="0" oninput="window.svgactive.setAttribute('rx',this.value);window.trysave()"></label>`;
@@ -418,20 +452,13 @@ window.svgclick = (_this)=>{
       ExtraTool.innerHTML = 'No options';
       break;
   }
-  setTimeout(()=>{
-    FullArea.onclick = (evt)=>{
-      if (evt.target===_this) return;
-      _this.classList.remove('select');
-      if (_this.parentElement!==evt.target&&_this.parentElement&&_this.parentElement.contains(evt.target)) {
-        window.svgprevc = prevc;
-        return;
-      }
-      primary.value = window.svgprevc;
-      primary.oninput = ()=>{};
-      FullArea.onclick = ()=>{};
-      ExtraTool.innerHTML = '';
-    };
-  }, 0);
+  FullArea.onclick = (evt)=>{
+    if (evt.target===_this) return;
+    FullArea.onclick = ()=>{};
+    primary.oninput = ()=>{};
+    _this.classList.remove('select');
+    ExtraTool.innerText = '';
+  };
 };
 function handleActiveSVG(svg) {
   let drag = false;
@@ -462,13 +489,13 @@ function handleActiveSVG(svg) {
     h = Math.max(h,1);
     switch(window.tooloptions.shape) {
       case 'square':
-        content = `<rect onclick="window.svgclick(this)" fill="${primary.value}" width="${w}" height="${h}" x="${globalXToLocal(firstpos[0],b)}" y="${globalYToLocal(firstpos[1],b)}" rx="0" stroke="none"></rect>`;
+        content = `<rect onclick="window.svgclick(this)" fill="${primary.dataset.value}" width="${w}" height="${h}" x="${globalXToLocal(firstpos[0],b)}" y="${globalYToLocal(firstpos[1],b)}" rx="0" stroke="none"></rect>`;
         break;
       case 'circle':
-        content = `<ellipse onclick="window.svgclick(this)" fill="${primary.value}" cx="${globalXToLocal(firstpos[0],b)+Math.floor(w/2)}" rx="${Math.floor(w/2)}" cy="${globalYToLocal(firstpos[1],b)+Math.floor(h/2)}" ry="${Math.floor(h/2)}" stroke="none"></ellipse>`;
+        content = `<ellipse onclick="window.svgclick(this)" fill="${primary.dataset.value}" cx="${globalXToLocal(firstpos[0],b)+Math.floor(w/2)}" rx="${Math.floor(w/2)}" cy="${globalYToLocal(firstpos[1],b)+Math.floor(h/2)}" ry="${Math.floor(h/2)}" stroke="none"></ellipse>`;
         break;
       case 'line':
-        content = `<line onclick="window.svgclick(this)" stroke="${primary.value}" stroke-width="10" stroke-linecap="round" x1="${globalXToLocal(firstpos[0],b)}" y1="${globalYToLocal(firstpos[1],b)}" x2="${globalXToLocal(secpos[0],b)}" y2="${globalYToLocal(secpos[1],b)}" fill="none"></line>`;
+        content = `<line onclick="window.svgclick(this)" stroke="${primary.dataset.value}" stroke-width="10" stroke-linecap="round" x1="${globalXToLocal(firstpos[0],b)}" y1="${globalYToLocal(firstpos[1],b)}" x2="${globalXToLocal(secpos[0],b)}" y2="${globalYToLocal(secpos[1],b)}" fill="none"></line>`;
         break;
     }
     svg.insertAdjacentHTML('beforeend', content);

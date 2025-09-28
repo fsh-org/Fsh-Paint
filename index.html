@@ -29,6 +29,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/color-namer@1.4.0/dist/color-namer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5.5.2"></script>
   </head>
   <body>
     <dialog id="hello" closeby="none">
@@ -103,6 +104,7 @@
         }
       </script>
     </dialog>
+    <dialog id="colorpicker" closedby="any"></dialog>
     <nav>
       <div class="nomobile">
         <img src="https://fsh.plus/fsh.png" width="50" height="50">
@@ -122,8 +124,8 @@
       </div>
       <vr></vr>
       <div id="currentcolors">
-        <input type="color" id="primary" value="#ffffff">
-        <input type="color" id="secondary" value="#000000">
+        <button id="primary" style="--color:#ffffff" data-value="#ffffff" aria-label="Choose color" aria-haspopup="dialog"></button>
+        <button id="secondary" style="--color:#000000" aria-label="Choose color" aria-haspopup="dialog"></button>
       </div>
       <button id="rotatecolor" aria-label="Swap colors" title="Swap colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M72.7108 15L72.7107 241" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M129.932 72L74.7071 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M15.7782 72L71.0036 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M183 241L183 15" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M126.029 184L182.739 240.711" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M239.682 184L182.971 240.711" stroke-width="30" stroke-linecap="round" fill="none"/></svg></button>
       <div id="colors"></div>
