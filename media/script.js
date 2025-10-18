@@ -101,7 +101,7 @@ function setActions() {
 
 // Tools
 let tool = 'pencil';
-window.tooloptions = { size: 20, step: 0, shape: 'square' };
+window.tooloptions = { size: 20, step: 0, tolerance: 0, malpha: false, shape: 'square', tsize: 10 };
 const ExtraTool = document.getElementById('extra');
 const shapes = [
   { name: 'square', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect width="256" height="256" rx="20"/></svg>' },
@@ -123,6 +123,13 @@ window.setTool = (tol, _this)=>{
 <label>Step: <input id="e-step" type="number" min="0" value="${window.tooloptions.step}" onchange="window.tooloptions.step=this.value"></label>`;
       }
       break;
+    case 'fill':
+      if (ExtraTool.getAttribute('type')!=='fill') {
+        ExtraTool.setAttribute('type', 'fill');
+        ExtraTool.innerHTML = `<label>Tolerance: <input id="e-tol" type="number" min="0" value="${window.tooloptions.tolerance}" onchange="window.tooloptions.tolerance=this.value"></label>
+<label>Maintain alpha: <input id="e-malpha" type="checkbox" ${window.tooloptions.malpha?'checked':''} onchange="window.tooloptions.malpha=this.value"></label>`;
+      }
+      break;
     case 'select':
       if (ExtraTool.getAttribute('type')!=='select') {
         ExtraTool.setAttribute('type', 'select');
@@ -141,6 +148,12 @@ window.setTool = (tol, _this)=>{
             btn.setAttribute('selected', true);
           };
         });
+      }
+      break;
+    case 'text':
+      if (ExtraTool.getAttribute('type')!=='text') {
+        ExtraTool.setAttribute('type', 'text');
+        ExtraTool.innerHTML = `<label>Size: <input id="e-tsize" type="number" min="1" value="${window.tooloptions.tsize}" onchange="window.tooloptions.tsize=this.value"></label>`;
       }
       break;
   }
@@ -246,15 +259,19 @@ window.selectLayer = (id)=>{
     if (!['pencil','eraser'].includes(tool)) window.setTool('pencil');
     document.getElementById('t-pencil').style.display = '';
     document.getElementById('t-eraser').style.display = '';
+    document.getElementById('t-fill').style.display = '';
     document.getElementById('t-select').style.display = 'none';
     document.getElementById('t-shapes').style.display = 'none';
+    document.getElementById('t-text').style.display = 'none';
     handleActiveCanvas(document.getElementById(id));
   } else if (type==='shapes') {
     if (!['select','shapes'].includes(tool)) window.setTool('select');
     document.getElementById('t-pencil').style.display = 'none';
     document.getElementById('t-eraser').style.display = 'none';
+    document.getElementById('t-fill').style.display = 'none';
     document.getElementById('t-select').style.display = '';
     document.getElementById('t-shapes').style.display = '';
+    document.getElementById('t-text').style.display = '';
     handleActiveSVG(document.getElementById(id));
   }
 };
@@ -378,6 +395,21 @@ function globalYToLocal(y, b) {
   return (y-b.top)/b.height*window.projectdata.height;
 }
 
+function colorCompare(a,b,tol) {
+  return (Math.abs(a[0]-b[0])<=tol)&&(Math.abs(a[1]-b[1])<=tol)&&(Math.abs(a[2]-b[2])<=tol)&&(Math.abs(a[3]-b[3])<=tol);
+}
+function floodfill(imageData, x, y, target, color, tol) {
+  let offset = (y * imageData.width + x) * 4;
+  if (!colorCompare(imageData.data.slice(offset, offset+4),target,tol)) return;
+
+  imageData.data.set(color, offset);
+
+  floodfill(imageData, Math.max(x-1, 0), y, target, color, tol);
+  floodfill(imageData, Math.min(x+1, imageData.width), y, target, color, tol);
+  floodfill(imageData, x, Math.max(y-1, 0), target, color, tol);
+  floodfill(imageData, x, Math.min(y+1, imageData.height), target, color, tol);
+}
+
 function handleActiveCanvas(canvas) {
   let pointers = new Map();
   let ctx = canvas.getContext('2d');
@@ -386,7 +418,24 @@ function handleActiveCanvas(canvas) {
     evt.preventDefault();
     canvas.setPointerCapture(evt.pointerId);
     pointers.set(evt.pointerId, { x: evt.clientX, y: evt.clientY, button: evt.button });
-    if (evt.button===1) TransformArea.style.cursor = 'move';
+    if (evt.button===1) {
+      TransformArea.style.cursor = 'move';
+    } else if (evt.button===0&&tool==='fill') {
+      let b = canvas.getBoundingClientRect();
+      let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let x = Math.floor(globalXToLocal(evt.clientX,b));
+      let y = Math.floor(globalYToLocal(evt.clientY,b));
+      let target = imageData.data.slice((y*imageData.width+x)*4, (y*imageData.width+x+1)*4);
+      let color = [parseInt(primary.dataset.value.slice(1,3),16),parseInt(primary.dataset.value.slice(3,5),16),parseInt(primary.dataset.value.slice(5,7),16),255];
+      let alpha = parseInt(primary.dataset.value.slice(7,9),16);
+      color[3] = Number.isNaN(alpha)?255:alpha;
+      if (colorCompare(color,target)) return;
+      let malpha = document.getElementById('e-malpha').checked??false;
+      if (malpha) color = color.slice(0,3);
+      floodfill(imageData, x, y, target, color, document.getElementById('e-tol').value||0);
+      ctx.putImageData(imageData, 0, 0);
+      trysave();
+    }
   };
   canvas.onpointermove = (evt, coal=true)=>{
     if (coal) {
@@ -406,6 +455,7 @@ function handleActiveCanvas(canvas) {
       pointers.set(evt.pointerId,pointer);
       transform();
     } else if (pointer.button===0) {
+      if (tool==='fill') return;
       if ((document.getElementById('e-step')?.value||0)>distance([pointer.x,pointer.y], [evt.clientX,evt.clientY])) return;
       let b = canvas.getBoundingClientRect();
       ctx.globalCompositeOperation = tool==='eraser'?'destination-out':'source-over';
