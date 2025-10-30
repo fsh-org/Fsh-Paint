@@ -281,7 +281,24 @@ window.togvisLayer = (id,_this)=>{
   window.projectdata.layers[idx].hidden = hidden;
   _this.innerHTML = visibilityIcons[hidden.toString()];
   _this.parentElement.style.color = hidden?'var(--text-3)':'';
+  _this.setAttribute('aria-label', hidden?'Show':'Hide');
+  _this.setAttribute('title', hidden?'Show':'Hide');
   document.getElementById(id).style.opacity = hidden?'0':1;
+  trysave();
+};
+window.dupeLayer = async(id)=>{
+  let idx = window.projectdata.layers.findIndex(l=>l.id===id);
+  let copy = structuredClone(window.projectdata.layers[idx]);
+  copy.name = copy.name+' Copy';
+  copy.id = Math.round(Math.random()*10**9).toString(36);
+  window.projectdata.layers.splice(idx+1, 0, copy);
+  let before = document.getElementById(id);
+  let after = before.cloneNode(true);
+  after.id = copy.id;
+  before.before(after);
+  after.getContext('2d').drawImage(before, 0, 0);
+  showLayers();
+  window.selectLayer(copy.id);
   trysave();
 };
 window.rasterLayer = async(id)=>{
@@ -304,24 +321,27 @@ window.deleteLayer = (id)=>{
 window.renameLayer = (_this, id, name, type)=>{
   LayersArea.classList.remove('contracted')
   _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()">`;
-  LayersArea.querySelector('div.list input.new').focus();
-  LayersArea.querySelector('div.list input.new').select();
+  LayersArea.querySelector('div.list input.new')?.focus();
+  LayersArea.querySelector('div.list input.new')?.select();
 };
 function showLayers() {
   LayersArea.querySelector('div.list').innerHTML = window.projectdata.layers
     .map(layer=>`<div id="l-${layer.id}"${layer.hidden?' style="color:var(--text-3)"':''}${layer.id===selectedLayer?' selected':''}>
-  <button onclick="window.selectLayer('${layer.id}')" ondblclick="window.renameLayer(this, '${layer.id}', '${layer.name}', '${layer.type}')">${layerIcons[layer.type]??''} ${layer.name}</button>
-  <button onclick="window.togvisLayer('${layer.id}', this)" class="other">${visibilityIcons[layer.hidden.toString()]}</button>
-  <button class="other" data-id="${layer.id}" data-type="${layer.type}"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path fill-rule="evenodd" clip-rule="evenodd" d="M128 158C111.431 158 98 144.569 98 128C98 111.431 111.431 98 128 98C144.569 98 158 111.431 158 128C158 144.569 144.569 158 128 158ZM128 60C111.432 60 98.0001 46.5685 98.0001 30C98.0001 13.4315 111.432 -5.87112e-07 128 -1.31135e-06C144.569 -2.03558e-06 158 13.4315 158 30C158 46.5685 144.569 60 128 60ZM98 226C98 242.569 111.431 256 128 256C144.569 256 158 242.569 158 226C158 209.431 144.569 196 128 196C111.431 196 98 209.431 98 226Z"/></svg></button>
+  <button onclick="window.selectLayer('${layer.id}')" ondblclick="window.renameLayer(this, '${layer.id}', '${layer.name}', '${layer.type}')" data-namesec>${layerIcons[layer.type]??''} ${layer.name}</button>
+  <button onclick="window.togvisLayer('${layer.id}', this)" class="other" aria-label="${layer.hidden?'Show':'Hide'}" title="${layer.hidden?'Show':'Hide'}">${visibilityIcons[layer.hidden.toString()]}</button>
+  <button class="other" data-id="${layer.id}" data-name="${layer.name}" data-type="${layer.type}"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path fill-rule="evenodd" clip-rule="evenodd" d="M128 158C111.431 158 98 144.569 98 128C98 111.431 111.431 98 128 98C144.569 98 158 111.431 158 128C158 144.569 144.569 158 128 158ZM128 60C111.432 60 98.0001 46.5685 98.0001 30C98.0001 13.4315 111.432 -5.87112e-07 128 -1.31135e-06C144.569 -2.03558e-06 158 13.4315 158 30C158 46.5685 144.569 60 128 60ZM98 226C98 242.569 111.431 256 128 256C144.569 256 158 242.569 158 226C158 209.431 144.569 196 128 196C111.431 196 98 209.431 98 226Z"/></svg></button>
 </div>`)
     .join('')||'No layers, create one';
   LayersArea.querySelectorAll('div.list button.other[data-id]').forEach(btn=>{
     let id = btn.getAttribute('data-id');
+    let name = btn.getAttribute('data-name');
     let type = btn.getAttribute('data-type');
     tippy(btn, {
       allowHTML: true,
-      content: (type==='shapes'?`<button onclick="window.rasterLayer('${id}')">Rasterize</button>`:'')+
-`<button onclick="window.deleteLayer('${id}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.6776 7.32227C32.9145 -2.44063 17.0852 -2.44077 7.32214 7.32227C-2.44082 17.0853 -2.44069 32.9146 7.32214 42.6777L92.2616 127.617L7.32214 212.557C-2.44091 222.32 -2.44083 238.149 7.32214 247.912C17.0852 257.675 32.9145 257.675 42.6776 247.912L127.617 162.973L212.557 247.912C222.32 257.675 238.149 257.675 247.912 247.912C257.675 238.149 257.675 222.32 247.912 212.557L162.973 127.617L247.912 42.6777C257.675 32.9146 257.675 17.0853 247.912 7.32227C238.149 -2.44079 222.32 -2.44068 212.557 7.32227L127.617 92.2617L42.6776 7.32227Z"/></svg> Delete</button>`,
+      content: `<button onclick="window.renameLayer(document.querySelector('#l-${id} [data-namesec]'), '${id}', '${name}', '${type}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M72.5096 256C71.9573 256 71.5096 255.552 71.5096 255V238.941C71.5096 238.389 71.9573 237.941 72.5096 237.941H79.7382C84.9855 237.941 89.7557 237.463 94.0489 236.507C98.5806 235.312 102.158 233.041 104.782 229.695C107.644 226.109 109.075 220.932 109.075 214V17.9272H74.7295C67.8127 17.9272 62.3269 19.3614 58.2723 22.2297C54.2176 24.859 51.2362 28.4444 49.3281 32.986C47.42 37.2885 46.1082 42.0691 45.3927 47.3277L43.7065 61.8604C43.648 62.3647 43.2209 62.7451 42.7132 62.7451H26.0289C25.4655 62.7451 25.0133 62.2798 25.0293 61.7166L26.7611 0.971502C26.7766 0.430536 27.2195 0 27.7607 0H227.239C227.78 0 228.223 0.430535 228.239 0.971502L229.971 61.7166C229.987 62.2798 229.535 62.7451 228.971 62.7451H212.287C211.779 62.7451 211.352 62.3647 211.294 61.8604L209.607 47.3277C209.13 42.0691 207.819 37.2885 205.672 32.986C203.764 28.4444 200.782 24.859 196.728 22.2297C192.673 19.3614 187.068 17.9272 179.913 17.9272H145.209V214C145.209 221.41 146.521 225.866 149.145 229.69C151.768 233.275 155.346 235.315 159.878 236.51C164.41 237.705 169.299 237.941 174.546 237.941H181.775C182.327 237.941 182.775 238.389 182.775 238.941V255C182.775 255.552 182.327 256 181.775 256H72.5096Z"/></svg> Rename</button>
+<button onclick="window.dupeLayer('${id}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect x="88.5" y="88.5" width="155" height="155" rx="17.5" stroke-width="25" fill="none"/><rect width="180" height="180" rx="30"/></svg> Duplicate</button>`+
+(type==='shapes'?`<button onclick="window.rasterLayer('${id}')">Rasterize</button>`:'')+
+`<button onclick="window.deleteLayer('${id}')" style="color:var(--red-1)"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.6776 7.32227C32.9145 -2.44063 17.0852 -2.44077 7.32214 7.32227C-2.44082 17.0853 -2.44069 32.9146 7.32214 42.6777L92.2616 127.617L7.32214 212.557C-2.44091 222.32 -2.44083 238.149 7.32214 247.912C17.0852 257.675 32.9145 257.675 42.6776 247.912L127.617 162.973L212.557 247.912C222.32 257.675 238.149 257.675 247.912 247.912C257.675 238.149 257.675 222.32 247.912 212.557L162.973 127.617L247.912 42.6777C257.675 32.9146 257.675 17.0853 247.912 7.32227C238.149 -2.44079 222.32 -2.44068 212.557 7.32227L127.617 92.2617L42.6776 7.32227Z"/></svg> Delete</button>`,
       interactive: true,
       trigger: 'click',
       placement: 'left-start',
@@ -367,9 +387,10 @@ async function compositeLayers(preview=true, transparency=true) {
   let hs = window.projectdata.height/(preview?2:1);
   let offscreen = new OffscreenCanvas(ws, hs);
   const ctx = offscreen.getContext('2d');
-  ctx.clearRect(0, 0, ws, hs);
 
-  if (!transparency) {
+  if (transparency) {
+    ctx.clearRect(0, 0, ws, hs);
+  } else {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, ws, hs);
   }
