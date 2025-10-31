@@ -229,6 +229,18 @@ const visibilityIcons = {
 const FullArea = document.getElementById('area');
 const TransformArea = document.getElementById('transforms');
 const LayersArea = document.getElementById('layers');
+const LayerList = LayersArea.querySelector('div.list');
+new Sortable(LayerList, {
+  animation: 150,
+  onEnd: (evt)=>{
+    if (evt.oldIndex===evt.newIndex) return;
+    TransformArea.children[window.projectdata.layers.length-1-evt.newIndex][evt.oldIndex>evt.newIndex?'after':'before'](document.getElementById(window.projectdata.layers[evt.oldIndex].id));
+    let item = window.projectdata.layers.splice(evt.oldIndex, 1)[0];
+    window.projectdata.layers.splice(evt.newIndex, 0, item);
+    trysave();
+    showLayers();
+  }
+});
 let selectedLayer = '';
 window.createLayer = (type)=>{
   let id = Math.round(Math.random()*10**9).toString(36);
@@ -238,12 +250,12 @@ window.createLayer = (type)=>{
   } else if (type==='shapes') {
     TransformArea.insertAdjacentHTML('beforeend', `<svg id="${id}" width="${window.projectdata.width}" height="${window.projectdata.height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${window.projectdata.width} ${window.projectdata.height}"></svg>`);
   }
-  if (LayersArea.querySelector('div.list').innerText.includes('No layers')) LayersArea.querySelector('div.list').innerText = '';
-  LayersArea.querySelector('div.list').insertAdjacentHTML('afterbegin', `<div id="l-${id}"${id===selectedLayer?' selected':''}>
+  if (LayerList.innerText.includes('No layers')) LayerList.innerText = '';
+  LayerList.insertAdjacentHTML('afterbegin', `<div id="l-${id}"${id===selectedLayer?' selected':''}>
   <button onclick="window.selectLayer('${id}')">${layerIcons[type]??''} <input class="new" value="New layer" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()"></button>
 </div>`);
-  LayersArea.querySelector('div.list input.new').focus();
-  LayersArea.querySelector('div.list input.new').select();
+  LayerList.querySelector('input.new').focus();
+  LayerList.querySelector('input.new').select();
   window.selectLayer(id);
   trysave();
 };
@@ -321,18 +333,18 @@ window.deleteLayer = (id)=>{
 window.renameLayer = (_this, id, name, type)=>{
   LayersArea.classList.remove('contracted')
   _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()">`;
-  LayersArea.querySelector('div.list input.new')?.focus();
-  LayersArea.querySelector('div.list input.new')?.select();
+  LayerList.querySelector('input.new')?.focus();
+  LayerList.querySelector('input.new')?.select();
 };
 function showLayers() {
-  LayersArea.querySelector('div.list').innerHTML = window.projectdata.layers
+  LayerList.innerHTML = window.projectdata.layers
     .map(layer=>`<div id="l-${layer.id}"${layer.hidden?' style="color:var(--text-3)"':''}${layer.id===selectedLayer?' selected':''}>
   <button onclick="window.selectLayer('${layer.id}')" ondblclick="window.renameLayer(this, '${layer.id}', '${layer.name}', '${layer.type}')" data-namesec>${layerIcons[layer.type]??''} ${layer.name}</button>
   <button onclick="window.togvisLayer('${layer.id}', this)" class="other" aria-label="${layer.hidden?'Show':'Hide'}" title="${layer.hidden?'Show':'Hide'}">${visibilityIcons[layer.hidden.toString()]}</button>
   <button class="other" data-id="${layer.id}" data-name="${layer.name}" data-type="${layer.type}"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path fill-rule="evenodd" clip-rule="evenodd" d="M128 158C111.431 158 98 144.569 98 128C98 111.431 111.431 98 128 98C144.569 98 158 111.431 158 128C158 144.569 144.569 158 128 158ZM128 60C111.432 60 98.0001 46.5685 98.0001 30C98.0001 13.4315 111.432 -5.87112e-07 128 -1.31135e-06C144.569 -2.03558e-06 158 13.4315 158 30C158 46.5685 144.569 60 128 60ZM98 226C98 242.569 111.431 256 128 256C144.569 256 158 242.569 158 226C158 209.431 144.569 196 128 196C111.431 196 98 209.431 98 226Z"/></svg></button>
 </div>`)
     .join('')||'No layers, create one';
-  LayersArea.querySelectorAll('div.list button.other[data-id]').forEach(btn=>{
+  LayerList.querySelectorAll('button.other[data-id]').forEach(btn=>{
     let id = btn.getAttribute('data-id');
     let name = btn.getAttribute('data-name');
     let type = btn.getAttribute('data-type');
