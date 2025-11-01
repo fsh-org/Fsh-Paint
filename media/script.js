@@ -101,7 +101,7 @@ function setActions() {
 
 // Tools
 let tool = 'pencil';
-window.tooloptions = { size: 20, step: 0, tolerance: 0, malpha: false, shape: 'square', tsize: 10 };
+window.tooloptions = { size: 20, step: 0, tolerance: 20, malpha: true, shape: 'square', tsize: 10 };
 const ExtraTool = document.getElementById('extra');
 const shapes = [
   { name: 'square', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect width="256" height="256" rx="20"/></svg>' },
@@ -110,8 +110,8 @@ const shapes = [
 ];
 window.setTool = (tol, _this)=>{
   tool = tol;
-  document.querySelector('#tools [selected]').removeAttribute('selected');
-  document.getElementById('t-'+tool).setAttribute('selected', true);
+  document.querySelector('.tools [selected]').removeAttribute('selected');
+  _this.setAttribute('selected', true);
 
   switch(tool) {
     case 'pencil':
@@ -130,10 +130,11 @@ window.setTool = (tol, _this)=>{
 <label>Maintain alpha: <input id="e-malpha" type="checkbox" ${window.tooloptions.malpha?'checked':''} onchange="window.tooloptions.malpha=this.value"></label>`;
       }
       break;
+
     case 'select':
       if (ExtraTool.getAttribute('type')!=='select') {
         ExtraTool.setAttribute('type', 'select');
-        ExtraTool.innerHTML = '';
+        ExtraTool.innerText = '';
       }
       break;
     case 'shapes':
@@ -154,6 +155,13 @@ window.setTool = (tol, _this)=>{
       if (ExtraTool.getAttribute('type')!=='text') {
         ExtraTool.setAttribute('type', 'text');
         ExtraTool.innerHTML = `<label>Size: <input id="e-tsize" type="number" min="1" value="${window.tooloptions.tsize}" onchange="window.tooloptions.tsize=this.value"></label>`;
+      }
+      break;
+
+    case 'image':
+      if (ExtraTool.getAttribute('type')!=='image') {
+        ExtraTool.setAttribute('type', 'image');
+        ExtraTool.innerText = '';
       }
       break;
   }
@@ -268,22 +276,14 @@ window.selectLayer = (id)=>{
   TransformArea.querySelectorAll('canvas').forEach(canvas=>canvas.onpointerdown=canvas.onpointermove=canvas.onpointerup=canvas.onpointercancel=()=>{});
   document.getElementById(id).style.pointerEvents = 'all';
   if (type==='draw') {
-    if (!['pencil','eraser'].includes(tool)) window.setTool('pencil');
-    document.getElementById('t-pencil').style.display = '';
-    document.getElementById('t-eraser').style.display = '';
-    document.getElementById('t-fill').style.display = '';
-    document.getElementById('t-select').style.display = 'none';
-    document.getElementById('t-shapes').style.display = 'none';
-    document.getElementById('t-text').style.display = 'none';
+    if (!['pencil','eraser','fill'].includes(tool)) window.setTool('pencil', document.getElementById('tools-draw').children[0]);
+    document.getElementById('tools-draw').style.display = '';
+    document.getElementById('tools-shapes').style.display = 'none';
     handleActiveCanvas(document.getElementById(id));
   } else if (type==='shapes') {
-    if (!['select','shapes'].includes(tool)) window.setTool('select');
-    document.getElementById('t-pencil').style.display = 'none';
-    document.getElementById('t-eraser').style.display = 'none';
-    document.getElementById('t-fill').style.display = 'none';
-    document.getElementById('t-select').style.display = '';
-    document.getElementById('t-shapes').style.display = '';
-    document.getElementById('t-text').style.display = '';
+    if (!['select','shapes','text'].includes(tool)) window.setTool('select', document.getElementById('tools-shapes').children[0]);
+    document.getElementById('tools-shapes').style.display = '';
+    document.getElementById('tools-draw').style.display = 'none';
     handleActiveSVG(document.getElementById(id));
   }
 };
@@ -429,7 +429,7 @@ function globalYToLocal(y, b) {
 }
 
 function colorCompare(a,b,tol) {
-  return (Math.abs(a[0]-b[0])<=tol)&&(Math.abs(a[1]-b[1])<=tol)&&(Math.abs(a[2]-b[2])<=tol)&&(Math.abs(a[3]-b[3])<=tol);
+  return (Math.abs(a[0]-b[0])<=tol)&&(Math.abs(a[1]-b[1])<=tol)&&(Math.abs(a[2]-b[2])<=tol);
 }
 function floodfill(imageData, x, y, target, color, tol) {
   let offset = (y * imageData.width + x) * 4;
@@ -468,6 +468,14 @@ function handleActiveCanvas(canvas) {
       floodfill(imageData, x, y, target, color, document.getElementById('e-tol').value||0);
       ctx.putImageData(imageData, 0, 0);
       trysave();
+    } else if (evt.button===0&&tool==='image') {
+      document.getElementById('tool-image-up').click();
+      document.getElementById('tool-image-up').onchange = (evt2)=>{
+        let file = evt2.target.files[0];
+        evt2.target.value = '';
+        if (!file) return;
+        putImage(file, evt);
+      };
     }
   };
   canvas.onpointermove = (evt, coal=true)=>{
@@ -488,7 +496,7 @@ function handleActiveCanvas(canvas) {
       pointers.set(evt.pointerId,pointer);
       transform();
     } else if (pointer.button===0) {
-      if (tool==='fill') return;
+      if (['fill','image'].includes(tool)) return;
       if ((document.getElementById('e-step')?.value||0)>distance([pointer.x,pointer.y], [evt.clientX,evt.clientY])) return;
       let b = canvas.getBoundingClientRect();
       ctx.globalCompositeOperation = tool==='eraser'?'destination-out':'source-over';
@@ -550,6 +558,14 @@ function handleActiveSVG(svg) {
     if (tool==='shapes') {
       drag = true;
       firstpos = [evt.clientX,evt.clientY];
+    } else if (tool==='image') {
+      document.getElementById('tool-image-up').click();
+      document.getElementById('tool-image-up').onchange = (evt2)=>{
+        let file = evt2.target.files[0];
+        evt2.target.value = '';
+        if (!file) return;
+        putImage(file, evt);
+      };
     }
   };
   TransformArea.onpointerup = (evt)=>{
@@ -597,8 +613,9 @@ function putImage(file, oevt) {
       if (layer.type==='draw') {
         document.getElementById(layer.id).getContext('2d').drawImage(img, globalXToLocal(oevt.clientX,b), globalYToLocal(oevt.clientY,b));
       } else if (layer.type==='shapes') {
-        document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<image href="${reader.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" x="${globalXToLocal(oevt.clientX,b)}" y="${globalYToLocal(oevt.clientY,b)}"></image>`)
+        document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<image href="${reader.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" x="${globalXToLocal(oevt.clientX,b)}" y="${globalYToLocal(oevt.clientY,b)}"/>`);
       }
+      trysave();
     };
     img.src = reader.result;
   };

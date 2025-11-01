@@ -97,11 +97,11 @@ nav div {
   height: 100%;
 }
 
-#actions button, #tools button, #rotatecolor, #colors button, #extra button {
+#actions button, .tools button, #rotatecolor, #colors button, #extra button {
   border: none;
   outline: none;
 }
-#tools button[selected], #extra button[selected] {
+.tools button[selected], #extra button[selected] {
   color: var(--text-1);
   background-color: var(--bg-2);
 }
@@ -320,7 +320,7 @@ main {
     flex-direction: column;
   }
   #layers {
-    width: 50dvw;
+    width: 45dvw;
     height: calc(100dvh - 86px);
   }
   #layers .list div button.other {
