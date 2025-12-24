@@ -126,6 +126,7 @@ nav div {
   height: 25px;
   outline: none;
   background-color: var(--color);
+  transition: none;
 }
 #colorpicker {
   position: absolute;
@@ -135,6 +136,12 @@ nav div {
 }
 .IroColorPicker svg {
   transition: none;
+}
+#hexcolor {
+  width: 100%;
+  border-width: 1px;
+  outline: none;
+  box-sizing: border-box;
 }
 
 #colors {

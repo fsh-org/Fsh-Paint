@@ -168,8 +168,8 @@ window.setTool = (tol, _this)=>{
 };
 
 // Colors
-let colors = ['oklch(0.7404 0.1257 20.83)','oklch(0.7404 0.1257 67.83)','oklch(0.7404 0.1257 94.54)','oklch(0.7404 0.1257 140.47)','oklch(0.7404 0.1257 245.16)','oklch(0.7404 0.1257 308.19)','#ffffff',
-'oklch(0.6187 0.2311 20.83)','oklch(0.7552 0.1466 67.83)','oklch(0.8116 0.1543 94.54)','oklch(0.8027 0.2256 140.47)','oklch(0.6869 0.1663 245.16)','oklch(0.647 0.2487 308.19)','#888888',
+let colors = ['oklch(0.7404 0.1257 20.83)','oklch(0.7404 0.1257 67.83)','oklch(0.85 0.13 100)','oklch(0.7404 0.1257 140.47)','oklch(0.7404 0.1257 245.16)','oklch(0.7404 0.1257 308.19)','#ffffff',
+'oklch(0.6187 0.2311 20.83)','oklch(0.7552 0.1466 67.83)','oklch(0.85 0.16 95.54)','oklch(0.8027 0.2256 140.47)','oklch(0.6869 0.1663 245.16)','oklch(0.647 0.2487 308.19)','#888888',
 'oklch(0.3813 0.1311 20.83)','oklch(0.5178 0.0966 67.83)','oklch(0.5504 0.1043 94.54)','oklch(0.4377 0.1256 140.47)','oklch(0.4618 0.1163 245.16)','oklch(0.3724 0.1487 308.19)','#000000'];
 let primary = document.getElementById('primary');
 let secondary = document.getElementById('secondary');
@@ -182,7 +182,7 @@ window.setColor = (color, what=primary)=>{
 let boxPicker = new iro.ColorPicker("#colorpicker", {
   width: 200,
   layoutDirection: 'horizontal',
-  color: '#f00',
+  color: '#ffffff',
   borderWidth: 1,
   borderColor: 'var(--text-2)',
   layout: [
@@ -202,16 +202,33 @@ let boxPicker = new iro.ColorPicker("#colorpicker", {
     }
   ]
 });
+setTimeout(()=>{
+  document.getElementById('colorpicker').insertAdjacentHTML('beforeend', '<input id="hexcolor" value="#ffffff">');
+}, 10);
 function showColors() {
   primary.onclick = secondary.onclick = (evt)=>{
     if (colorPicker.open) colorPicker.close();
     colorPicker.show();
     colorPicker.style.left = (evt.target.getBoundingClientRect()).left.toFixed(2)+'px';
     boxPicker.setColors([evt.target.dataset.value]);
-    let edit = (color)=>{window.setColor(color.hex8String, evt.target)};
+    let HexColorIn = document.getElementById('hexcolor');
+    HexColorIn.value = evt.target.dataset.value;
+    let edit = (color)=>{
+      if (HexColorIn.value!==color.hex8String) HexColorIn.value = color.hex8String;
+      window.setColor(color.hex8String, evt.target);
+    };
     boxPicker.on('input:change', edit);
     colorPicker.onclose = ()=>{
+      edit({ hex8String: boxPicker.color.hex8String });
       boxPicker.off('input:change', edit);
+    };
+    HexColorIn.oninput = ()=>{
+      try {
+        boxPicker.setColors([HexColorIn.value]);
+      } catch(err) {
+        // Ignore :3
+      }
+      edit({ hex8String: HexColorIn.value });
     };
   };
   document.getElementById('rotatecolor').onclick = ()=>{
