@@ -117,6 +117,12 @@ nav div {
   background-color: var(--bg-3);
 }
 
+.tools {
+  flex-direction: column;
+  gap: 0px;
+  justify-content: center;
+}
+
 #currentcolors {
   flex-direction: column;
   justify-content: center;
@@ -148,6 +154,7 @@ nav div {
   --colors-size: 20px;
   --colors-columns: 7;
   --colors-rows: 3;
+  flex-direction: row !important;
   gap: 1px;
   max-width: calc(var(--colors-size) * var(--colors-columns) + 1px * var(--colors-columns) + 8px);
   max-height: calc(var(--colors-size) * var(--colors-rows) + 1px * var(--colors-rows));
