@@ -5,7 +5,10 @@ function sanitizeHTML(text) {
     .replaceAll('<','&lt;');
 }
 function distance(v1, v2) {
-  return Math.hypot(v2[0]-v1[0], v2[1]-v1[1]);
+  return Math.hypot((v2.clientX??v2.x)-(v1.clientX??v1.x), (v2.clientY??v2.y)-(v1.clientY??v1.y));
+}
+function angle(v1, v2) {
+  return Math.atan2((v2.clientX??v2.x)-(v1.clientX??v1.x), (v2.clientY??v2.y)-(v1.clientY??v1.y));
 }
 let oklchToHexCache = new Map();
 function oklchToHex(L, c, hDeg) {
@@ -514,7 +517,7 @@ function handleActiveCanvas(canvas) {
     let pointer = pointers.get(evt.pointerId);
     if (pointer.button===0) {
       if (['fill','image'].includes(tool)) return;
-      if ((document.getElementById('e-step')?.value||0)>distance([pointer.x,pointer.y], [evt.clientX,evt.clientY])) return;
+      if ((document.getElementById('e-step')?.value||0)>distance(pointer, evt)) return;
       let b = canvas.getBoundingClientRect();
       ctx.globalCompositeOperation = tool==='eraser'?'destination-out':'source-over';
       ctx.strokeStyle = primary.dataset.value;
@@ -524,9 +527,6 @@ function handleActiveCanvas(canvas) {
       ctx.moveTo(globalXToLocal(pointer.x,b), globalYToLocal(pointer.y,b));
       ctx.lineTo(globalXToLocal(evt.clientX,b), globalYToLocal(evt.clientY,b));
       ctx.stroke();
-      pointer.x = evt.clientX;
-      pointer.y = evt.clientY;
-      pointers.set(evt.pointerId, pointer);
       trysave();
     }
   };
@@ -654,11 +654,13 @@ document.onpaste = (evt)=>{
 let x = 0;
 let y = 0;
 let zoom = 1;
+let rotate = 0;
 let woh = true;
 let pointers = new Map();
+let gestureData = { center: null, distance: null, angle: null };
 const Cursor = document.getElementById('cursor');
 const gcd = (a,b)=>b===0?a:gcd(b,a%b);
-let transform = ()=>TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%) scale(${zoom}) translate(${x}px, ${y}px)`;
+let transform = ()=>TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%) scale(${zoom}) rotate(${rotate}deg) translate(${x}px, ${y}px)`;
 function mzinter() {
   // Size
   let d = gcd(window.projectdata.width, window.projectdata.height);
@@ -782,21 +784,41 @@ function mzinter() {
     }
     if (!pointers.has(evt.pointerId)) return;
     let pointer = pointers.get(evt.pointerId);
-    if (pointer.button===1) {
+    if (pointers.size===2) {
+      let [p1, p2] = [...pointers.values()];
+      // Center
+      let cent = { x: (p1.x+p2.x)/2, y: (p1.y+p2.y)/2 };
+      if (gestureData.center&&distance(cent,gestureData.center)>20) {
+        x += cent.x - gestureData.center.x;
+        y += cent.y - gestureData.center.y;
+      }
+      gestureData.center = cent;
+      // Distance
+      let dist = distance(p1, p2);
+      if (gestureData.distance) zoom += dist/gestureData.distance;
+      gestureData.distance = dist;
+      // Angle
+      let ang = angle(p1, p2);
+      if (gestureData.angle) rotate += ang-gestureData.angle;
+      gestureData.angle = ang;
+
+      transform();
+    } else if (pointer.button===1) {
       x += (evt.clientX-pointer.x)/zoom;
       y += (evt.clientY-pointer.y)/zoom;
-      pointer.x = evt.clientX;
-      pointer.y = evt.clientY;
-      pointers.set(evt.pointerId, pointer);
       transform();
     } else {
       window.cursorMove(evt);
     }
+    pointer.x = evt.clientX;
+    pointer.y = evt.clientY;
+    pointers.set(evt.pointerId, pointer);
   };
   TransformArea.onpointerup = TransformArea.onpointercancel = (evt)=>{
     TransformArea.releasePointerCapture(evt.pointerId);
     let pointer = pointers.get(evt.pointerId);
     pointers.delete(evt.pointerId);
+    gestureData = { center: null, distance: null, angle: null };
     if (pointer.button===1) {
       TransformArea.style.cursor = '';
     } else {
