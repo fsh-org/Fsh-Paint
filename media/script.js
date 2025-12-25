@@ -795,11 +795,11 @@ function mzinter() {
       gestureData.center = cent;
       // Distance
       let dist = distance(p1, p2);
-      if (gestureData.distance) zoom += dist/gestureData.distance;
+      if (gestureData.distance) zoom += (dist/gestureData.distance)-1;
       gestureData.distance = dist;
       // Angle
       let ang = angle(p1, p2);
-      if (gestureData.angle) rotate += ang-gestureData.angle;
+      if (gestureData.angle&&Math.abs(ang-gestureData.angle)>1) rotate += ang-gestureData.angle;
       gestureData.angle = ang;
 
       transform();
