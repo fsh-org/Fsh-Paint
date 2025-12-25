@@ -4,12 +4,24 @@ function sanitizeHTML(text) {
     .replaceAll('&','&amp;')
     .replaceAll('<','&lt;');
 }
-function distance(v1, v2) {
-  return Math.hypot((v2.clientX??v2.x)-(v1.clientX??v1.x), (v2.clientY??v2.y)-(v1.clientY??v1.y));
-}
-function angle(v1, v2) {
-  return Math.atan2((v2.clientX??v2.x)-(v1.clientX??v1.x), (v2.clientY??v2.y)-(v1.clientY??v1.y));
-}
+const gcd = (a,b)=>b===0?a:gcd(b,a%b);
+
+const distance = (v1, v2)=>Math.hypot((v2.cx??v2.x)-(v1.cx??v1.x), (v2.cy??v2.y)-(v1.cy??v1.y));
+const angle = (v1, v2)=>Math.atan2((v2.cy??v2.y)-(v1.cy??v1.y), (v2.cx??v2.x)-(v1.cx??v1.x));
+const rotateAround = (x,y,cx,cy,rad)=>{
+  let dx = x-cx;
+  let dy = y-cy;
+  let c = Math.cos(rad);
+  let s = Math.sin(rad);
+  return {
+    x: cx+dx*c - dy*s,
+    y: cy+dx*s + dy*c
+  };
+};
+const globalXToLocal = (x,b)=>(x-b.left)/b.width*window.projectdata.width;
+const globalYToLocal = (y,b)=>(y-b.top)/b.height*window.projectdata.height;
+const colorCompare = (a,b,tol)=>(Math.abs(a[0]-b[0])<=tol)&&(Math.abs(a[1]-b[1])<=tol)&&(Math.abs(a[2]-b[2])<=tol);
+
 let oklchToHexCache = new Map();
 function oklchToHex(L, c, hDeg) {
   let k = L+'-'+c+'-'+hDeg;
@@ -197,7 +209,7 @@ window.setColor = (color, what=primary)=>{
 };
 let boxPicker = new iro.ColorPicker("#colorpicker", {
   width: 200,
-  layoutDirection: 'horizontal',
+  layoutDirection: window.matchMedia('(max-width: 700px)').matches?'vertical':'horizontal',
   color: '#ffffff',
   borderWidth: 1,
   borderColor: 'var(--text-2)',
@@ -225,7 +237,9 @@ function showColors() {
   primary.onclick = secondary.onclick = (evt)=>{
     if (colorPicker.open) colorPicker.close();
     colorPicker.show();
-    colorPicker.style.left = (evt.target.getBoundingClientRect()).left.toFixed(2)+'px';
+    let btnb = evt.target.getBoundingClientRect();
+    let picb = colorPicker.getBoundingClientRect();
+    colorPicker.style.left = Math.min(btnb.left, window.innerWidth-picb.width).toFixed(2)+'px';
     boxPicker.setColors([evt.target.dataset.value]);
     let HexColorIn = document.getElementById('hexcolor');
     HexColorIn.value = evt.target.dataset.value;
@@ -461,16 +475,6 @@ async function compositeLayers(preview=true, transparency=true) {
 }
 window.compositeLayers = compositeLayers;
 
-function globalXToLocal(x, b) {
-  return (x-b.left)/b.width*window.projectdata.width;
-}
-function globalYToLocal(y, b) {
-  return (y-b.top)/b.height*window.projectdata.height;
-}
-
-function colorCompare(a,b,tol) {
-  return (Math.abs(a[0]-b[0])<=tol)&&(Math.abs(a[1]-b[1])<=tol)&&(Math.abs(a[2]-b[2])<=tol);
-}
 function floodfill(imageData, x, y, target, color, tol) {
   let offset = (y * imageData.width + x) * 4;
   if (!colorCompare(imageData.data.slice(offset, offset+4),target,tol)) return;
@@ -491,8 +495,8 @@ function handleActiveCanvas(canvas) {
     if (tool==='fill') {
       let b = canvas.getBoundingClientRect();
       let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      let x = Math.floor(globalXToLocal(evt.clientX,b));
-      let y = Math.floor(globalYToLocal(evt.clientY,b));
+      let x = Math.floor(globalXToLocal(evt.cx,b));
+      let y = Math.floor(globalYToLocal(evt.cy,b));
       let target = imageData.data.slice((y*imageData.width+x)*4, (y*imageData.width+x+1)*4);
       let color = [parseInt(primary.dataset.value.slice(1,3),16),parseInt(primary.dataset.value.slice(3,5),16),parseInt(primary.dataset.value.slice(5,7),16),255];
       let alpha = parseInt(primary.dataset.value.slice(7,9),16);
@@ -525,7 +529,7 @@ function handleActiveCanvas(canvas) {
       ctx.lineCap = document.getElementById('e-cap').value||'round';
       ctx.beginPath();
       ctx.moveTo(globalXToLocal(pointer.x,b), globalYToLocal(pointer.y,b));
-      ctx.lineTo(globalXToLocal(evt.clientX,b), globalYToLocal(evt.clientY,b));
+      ctx.lineTo(globalXToLocal(evt.cx,b), globalYToLocal(evt.cy,b));
       ctx.stroke();
       trysave();
     }
@@ -570,7 +574,7 @@ function handleActiveSVG(svg) {
   window.cursorDown = (evt)=>{
     if (tool==='shapes') {
       drag = true;
-      firstpos = [evt.clientX,evt.clientY];
+      firstpos = [evt.cx,evt.cy];
     } else if (tool==='image') {
       document.getElementById('tool-image-up').click();
       document.getElementById('tool-image-up').onchange = (evt2)=>{
@@ -587,28 +591,21 @@ function handleActiveSVG(svg) {
     drag = false;
     let content = '';
     let b = svg.getBoundingClientRect();
-    let secpos = [evt.clientX,evt.clientY];
-    if (window.tooloptions.shape!=='line') {
-      if (firstpos[0]>secpos[0]) { secpos[0] = firstpos[0]; firstpos[0] = evt.clientX };
-      if (firstpos[1]>secpos[1]) { secpos[1] = firstpos[1]; firstpos[1] = evt.clientY };
-    }
-    let w = Math.abs(globalXToLocal(firstpos[0],b)-globalXToLocal(secpos[0],b));
-    let h = Math.abs(globalYToLocal(firstpos[1],b)-globalYToLocal(secpos[1],b));
-    if (w===0&&h===0) {
-      w = 10;
-      h = 10;
-    }
-    w = Math.max(w,1);
-    h = Math.max(h,1);
+    let [x1, y1] = [globalXToLocal(firstpos[0],b), globalYToLocal(firstpos[1],b)];
+    let [x2, y2] = [globalXToLocal(evt.cx,b), globalYToLocal(evt.cy,b)];
+    let [x, y] = [Math.min(x1,x2), Math.min(y1,y2)];
+    let [w, h] = [Math.abs(x2-x1), Math.abs(y2-y1)];
+    if (w===0&&h===0) { w = 10; h = 10; }
+    [w, h] = [Math.max(w,1), Math.max(h,1)];
     switch(window.tooloptions.shape) {
       case 'square':
-        content = `<rect onclick="window.svgclick(this)" fill="${primary.dataset.value}" width="${w}" height="${h}" x="${globalXToLocal(firstpos[0],b)}" y="${globalYToLocal(firstpos[1],b)}" rx="0" stroke="none"></rect>`;
+        content = `<rect onclick="window.svgclick(this)" fill="${primary.dataset.value}" x="${x}" y="${y}" width="${w}" height="${h}" rx="0" stroke="none"></rect>`;
         break;
       case 'circle':
-        content = `<ellipse onclick="window.svgclick(this)" fill="${primary.dataset.value}" cx="${globalXToLocal(firstpos[0],b)+Math.floor(w/2)}" rx="${Math.floor(w/2)}" cy="${globalYToLocal(firstpos[1],b)+Math.floor(h/2)}" ry="${Math.floor(h/2)}" stroke="none"></ellipse>`;
+        content = `<ellipse onclick="window.svgclick(this)" fill="${primary.dataset.value}" cx="${x+Math.floor(w/2)}" cy="${y+Math.floor(h/2)}" rx="${Math.floor(w/2)}" ry="${Math.floor(h/2)}" stroke="none"></ellipse>`;
         break;
       case 'line':
-        content = `<line onclick="window.svgclick(this)" stroke="${primary.dataset.value}" stroke-width="10" stroke-linecap="round" x1="${globalXToLocal(firstpos[0],b)}" y1="${globalYToLocal(firstpos[1],b)}" x2="${globalXToLocal(secpos[0],b)}" y2="${globalYToLocal(secpos[1],b)}" fill="none"></line>`;
+        content = `<line onclick="window.svgclick(this)" stroke="${primary.dataset.value}" stroke-width="10" stroke-linecap="round" x1="${globalXToLocal(firstpos[0],b)}" y1="${globalYToLocal(firstpos[1],b)}" x2="${globalXToLocal(evt.cx,b)}" y2="${globalYToLocal(evt.cy,b)}" fill="none"></line>`;
         break;
     }
     svg.insertAdjacentHTML('beforeend', content);
@@ -625,9 +622,9 @@ function putImage(file, oevt) {
     let img = new Image();
     img.onload = ()=>{
       if (layer.type==='draw') {
-        document.getElementById(layer.id).getContext('2d').drawImage(img, globalXToLocal(oevt.clientX,b), globalYToLocal(oevt.clientY,b));
+        document.getElementById(layer.id).getContext('2d').drawImage(img, globalXToLocal(oevt.cx,b), globalYToLocal(oevt.cy,b));
       } else if (layer.type==='shapes') {
-        document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<image href="${reader.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" x="${globalXToLocal(oevt.clientX,b)}" y="${globalYToLocal(oevt.clientY,b)}"/>`);
+        document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<image href="${reader.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" x="${globalXToLocal(oevt.cx,b)}" y="${globalYToLocal(oevt.cy,b)}"/>`);
       }
       trysave();
     };
@@ -640,6 +637,10 @@ FullArea.ondrop = (evt)=>{
   let files = evt.dataTransfer.files;
   if (!files[0]) return;
   if (!files[0].type.startsWith('image/')) return;
+  let b = FullArea.getBoundingClientRect();
+  let pp = rotateAround(evt.clientX, evt.clientY, b.left+b.width/2, b.top+b.height/2, -rotate);
+  evt.cx = pp.x;
+  evt.cy = pp.y;
   putImage(files[0], evt);
 };
 FullArea.ondragover = (evt)=>evt.preventDefault();
@@ -647,6 +648,10 @@ FullArea.ondragleave = (evt)=>evt.preventDefault();
 document.onpaste = (evt)=>{
   let items = Array.from(evt.clipboardData.items).filter(item=>item.type.startsWith('image/'));
   if (!items[0]) return;
+  let b = FullArea.getBoundingClientRect();
+  let pp = rotateAround(evt.clientX, evt.clientY, b.left+b.width/2, b.top+b.height/2, -rotate);
+  evt.cx = pp.x;
+  evt.cy = pp.y;
   putImage(items[0].getAsFile(), evt);
 };
 
@@ -659,8 +664,36 @@ let woh = true;
 let pointers = new Map();
 let gestureData = { center: null, distance: null, angle: null };
 const Cursor = document.getElementById('cursor');
-const gcd = (a,b)=>b===0?a:gcd(b,a%b);
-let transform = ()=>TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%) scale(${zoom}) rotate(${rotate}deg) translate(${x}px, ${y}px)`;
+let transform = (evt)=>{
+  // Canvas
+  TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%) translate(${x}px, ${y}px) scale(${zoom}) rotate(${rotate}rad)`;
+  // Cursor
+  if (evt.pointerType==='touch') return;
+  let b = TransformArea.getBoundingClientRect();
+  let pp = rotateAround(evt.clientX, evt.clientY, b.left+b.width/2, b.top+b.height/2, -rotate);
+  Cursor.style.left = ((pp.x-b.left)/zoom).toFixed(2)+'px';
+  Cursor.style.top = ((pp.y-b.top)/zoom).toFixed(2)+'px';
+  switch(tool) {
+    case 'pencil':
+    case 'eraser':
+      Cursor.style.display = '';
+      Cursor.style.width = Cursor.style.height = Math.round((document.getElementById('e-size')?.value||10)*(TransformArea.offsetWidth/window.projectdata.width))+'px';
+      Cursor.style.borderRadius = document.getElementById('e-cap').value==='round'?'100rem':'0px';
+      if (TransformArea.style.cursor==='crosshair') TransformArea.style.cursor = '';
+      break;
+    case 'select':
+      Cursor.style.display = 'none';
+      if (TransformArea.style.cursor!=='move') TransformArea.style.cursor = 'crosshair';
+      break;
+    case 'shapes':
+      Cursor.style.display = '';
+      Cursor.style.width = '15px';
+      Cursor.style.height = '15px';
+      Cursor.style.borderRadius = window.tooloptions.shape==='square'?'0px':'100rem';
+      if (TransformArea.style.cursor==='crosshair') TransformArea.style.cursor = '';
+      break;
+  }
+};
 function mzinter() {
   // Size
   let d = gcd(window.projectdata.width, window.projectdata.height);
@@ -678,32 +711,7 @@ function mzinter() {
     if (['input','select','button'].includes(document.activeElement.tagName.toLowerCase())) document.activeElement.blur();
   };
   // Move
-  FullArea.onpointermove = (evt)=>{
-    if (evt.pointerType==='touch') return;
-    let b = TransformArea.getBoundingClientRect();
-    Cursor.style.left = (globalXToLocal(evt.clientX,b)/(window.projectdata.width*zoom)*b.width).toFixed(2)+'px';
-    Cursor.style.top = (globalYToLocal(evt.clientY,b)/(window.projectdata.height*zoom)*b.height).toFixed(2)+'px';
-    switch(tool) {
-      case 'pencil':
-      case 'eraser':
-        Cursor.style.display = '';
-        Cursor.style.width = Cursor.style.height = Math.round((document.getElementById('e-size')?.value||10)*(TransformArea.offsetWidth/window.projectdata.width))+'px';
-        Cursor.style.borderRadius = document.getElementById('e-cap').value==='round'?'100rem':'0px';
-        if (TransformArea.style.cursor==='crosshair') TransformArea.style.cursor = '';
-        break;
-      case 'select':
-        Cursor.style.display = 'none';
-        if (TransformArea.style.cursor!=='move') TransformArea.style.cursor = 'crosshair';
-        break;
-      case 'shapes':
-        Cursor.style.display = '';
-        Cursor.style.width = '15px';
-        Cursor.style.height = '15px';
-        Cursor.style.borderRadius = window.tooloptions.shape==='square'?'0px':'100rem';
-        if (TransformArea.style.cursor==='crosshair') TransformArea.style.cursor = '';
-        break;
-    }
-  };
+  FullArea.onpointermove = transform;
   // Scroll zoom
   FullArea.addEventListener('wheel', (evt)=>{
     if (evt.ctrlKey) evt.preventDefault();
@@ -711,7 +719,7 @@ function mzinter() {
   FullArea.addEventListener('wheel', (evt)=>{
     zoom += evt.deltaY/-(evt.shiftKey?500:(evt.altKey?2000:1000));
     zoom = Math.max(parseFloat(zoom.toFixed(5)), 0.1);
-    transform();
+    transform(evt);
   }, { passive: true });
   // Keybinds
   document.onkeydown = (evt)=>{
@@ -746,9 +754,10 @@ function mzinter() {
         break;
       case '0':
         if (!evt.ctrlKey) return;
-        zoom = 1;
         x = 0;
         y = 0;
+        zoom = 1;
+        rotate = 0;
         break;
       // Del
       case 'Backspace':
@@ -761,13 +770,17 @@ function mzinter() {
       default:
         return;
     }
-    transform();
+    transform(evt);
   };
   // Touch stuff
   TransformArea.onpointerdown = (evt)=>{
     evt.preventDefault();
     TransformArea.setPointerCapture(evt.pointerId);
-    pointers.set(evt.pointerId, { x: evt.clientX, y: evt.clientY, button: evt.button });
+    let b = TransformArea.getBoundingClientRect();
+    let pp = rotateAround(evt.clientX, evt.clientY, b.left+b.width/2, b.top+b.height/2, -rotate);
+    evt.cx = pp.x;
+    evt.cy = pp.y;
+    pointers.set(evt.pointerId, { x: evt.cx, y: evt.cy, button: evt.button });
     if (evt.button===1) {
       TransformArea.style.cursor = 'move';
     } else {
@@ -783,6 +796,10 @@ function mzinter() {
       }
     }
     if (!pointers.has(evt.pointerId)) return;
+    let b = TransformArea.getBoundingClientRect();
+    let pp = rotateAround(evt.clientX, evt.clientY, b.left+b.width/2, b.top+b.height/2, -rotate);
+    evt.cx = pp.x;
+    evt.cy = pp.y;
     let pointer = pointers.get(evt.pointerId);
     if (pointers.size===2) {
       let [p1, p2] = [...pointers.values()];
@@ -799,19 +816,18 @@ function mzinter() {
       gestureData.distance = dist;
       // Angle
       let ang = angle(p1, p2);
-      if (gestureData.angle&&Math.abs((gestureData.angle-ang)*(180/Math.PI))>1) rotate += (gestureData.angle-ang)*(180/Math.PI);
+      if (gestureData.angle&&Math.abs(ang-gestureData.angle)>(Math.PI/180)) rotate += ang-gestureData.angle;
       gestureData.angle = ang;
-
-      transform();
+      transform(evt);
     } else if (pointer.button===1) {
-      x += (evt.clientX-pointer.x)/zoom;
-      y += (evt.clientY-pointer.y)/zoom;
-      transform();
+      x += (evt.cx-pointer.x)/zoom;
+      y += (evt.cy-pointer.y)/zoom;
+      transform(evt);
     } else {
       window.cursorMove(evt);
     }
-    pointer.x = evt.clientX;
-    pointer.y = evt.clientY;
+    pointer.x = evt.cx;
+    pointer.y = evt.cy;
     pointers.set(evt.pointerId, pointer);
   };
   TransformArea.onpointerup = TransformArea.onpointercancel = (evt)=>{
@@ -819,6 +835,10 @@ function mzinter() {
     let pointer = pointers.get(evt.pointerId);
     pointers.delete(evt.pointerId);
     gestureData = { center: null, distance: null, angle: null };
+    let b = TransformArea.getBoundingClientRect();
+    let pp = rotateAround(evt.clientX, evt.clientY, b.left+b.width/2, b.top+b.height/2, -rotate);
+    evt.cx = pp.x;
+    evt.cy = pp.y;
     if (pointer.button===1) {
       TransformArea.style.cursor = '';
     } else {
@@ -906,11 +926,9 @@ const HelloModal = document.getElementById('hello');
 dbRequest.onsuccess = function(e) {
   let db = e.target.result;
   window.db = db;
-
   // General setup
   setActions();
   showColors();
-
   // Hello modal
   HelloModal.showModal();
   HelloModal.querySelector('button.new').onclick = ()=>{
@@ -978,6 +996,4 @@ dbRequest.onsuccess = function(e) {
   showProjects();
 };
 
-if (isHWAOff()) {
-  document.getElementById('hwanotice').style.display = '';
-}
+if (isHWAOff()) document.getElementById('hwanotice').style.display = '';
