@@ -788,18 +788,18 @@ function mzinter() {
       let [p1, p2] = [...pointers.values()];
       // Center
       let cent = { x: (p1.x+p2.x)/2, y: (p1.y+p2.y)/2 };
-      if (gestureData.center&&distance(cent,gestureData.center)>5) {
+      if (gestureData.center&&distance(cent,gestureData.center)>1) {
         x += cent.x - gestureData.center.x;
         y += cent.y - gestureData.center.y;
       }
       gestureData.center = cent;
       // Distance
       let dist = distance(p1, p2);
-      if (gestureData.distance&&Math.abs((dist/gestureData.distance)-1)>0.1) zoom += (dist/gestureData.distance)-1;
+      if (gestureData.distance&&Math.abs((dist/gestureData.distance)-1)>0.01) zoom += (dist/gestureData.distance)-1;
       gestureData.distance = dist;
       // Angle
       let ang = angle(p1, p2);
-      if (gestureData.angle&&Math.abs(ang-gestureData.angle)>0.1) rotate += (ang-gestureData.angle)*(180/Math.PI);
+      if (gestureData.angle&&Math.abs((gestureData.angle-ang)*(180/Math.PI))>1) rotate += (gestureData.angle-ang)*(180/Math.PI);
       gestureData.angle = ang;
 
       transform();
