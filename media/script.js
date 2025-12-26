@@ -48,11 +48,11 @@ function nameColor(color) {
 async function getFonts() {
   let fonts = (await window.queryLocalFonts?.())??[];
   fonts = fonts
-    .map(f=>f.family.includes(' ')?'"'+f.family+'"':f.family)
-    .concat([...document.fonts].map(f=>f.family.includes(' ')?'"'+f.family+'"':f.family))
+    .map(f=>f.family)
+    .concat([...document.fonts].map(f=>f.family))
     .concat(['serif','sans-serif','monospace','cursive','fantasy','system-ui']);
   return Array.from(new Set(fonts))
-    .toSorted((a, b)=>a.replaceAll('"','').localeCompare(b.replaceAll('"',''), navigator.language, { sensitivity: 'base', ignorePunctuation: true }));
+    .toSorted((a, b)=>a.localeCompare(b, navigator.language, { sensitivity: 'base', ignorePunctuation: true }));
 }
 function isHWAOff() {
   const gl = document.createElement('canvas').getContext('webgl');
@@ -142,15 +142,15 @@ window.setTool = (tol, _this)=>{
     case 'eraser':
       if (ExtraTool.getAttribute('type')!=='draw') {
         ExtraTool.setAttribute('type', 'draw');
-        ExtraTool.innerHTML = `<label>Size: <input id="e-size" type="number" min="1" value="${window.tooloptions.size}" onchange="window.tooloptions.size=this.value"></label>
+        ExtraTool.innerHTML = `<label>Size: <input id="e-size" type="number" min="1" value="${window.tooloptions.size}" oninput="window.tooloptions.size=this.value"></label>
 <label>Cap: <select id="e-cap"><option>round</option><option>butt</option><option>square</option></select></label>
-<label>Step: <input id="e-step" type="number" min="0" value="${window.tooloptions.step}" onchange="window.tooloptions.step=this.value"></label>`;
+<label>Step: <input id="e-step" type="number" min="0" value="${window.tooloptions.step}" oninput="window.tooloptions.step=this.value"></label>`;
       }
       break;
     case 'fill':
       if (ExtraTool.getAttribute('type')!=='fill') {
         ExtraTool.setAttribute('type', 'fill');
-        ExtraTool.innerHTML = `<label>Tolerance: <input id="e-tol" type="number" min="0" value="${window.tooloptions.tolerance}" onchange="window.tooloptions.tolerance=this.value"></label>
+        ExtraTool.innerHTML = `<label>Tolerance: <input id="e-tol" type="number" min="0" value="${window.tooloptions.tolerance}" oninput="window.tooloptions.tolerance=this.value"></label>
 <label>Maintain alpha: <input id="e-malpha" type="checkbox" ${window.tooloptions.malpha?'checked':''} onchange="window.tooloptions.malpha=this.value"></label>`;
       }
       break;
@@ -180,8 +180,8 @@ window.setTool = (tol, _this)=>{
         ExtraTool.setAttribute('type', 'text');
         ExtraTool.innerText = '';
         getFonts().then(fonts=>{
-          ExtraTool.innerHTML = `<label>Size: <input id="e-tsize" type="number" min="1" value="${window.tooloptions.tsize}" onchange="window.tooloptions.tsize=this.value"></label>
-<label>Font: <select id="e-tfont" onchange="window.tooloptions.tfont=this.value">${fonts.map(f=>`<option${f===window.tooloptions.tfont?' selected':''}>${f}</option>`)}</select></label>`;
+          ExtraTool.innerHTML = `<label>Size: <input id="e-tsize" type="number" min="1" value="${window.tooloptions.tsize}" oninput="window.tooloptions.tsize=this.value"></label>
+<label>Font: <select id="e-tfont" onchange="window.tooloptions.tfont=this.value">${fonts.map(f=>`<option${f===window.tooloptions.tfont?' selected':''}>${f}</option>`).join('')}</select></label>`;
         });
       }
       break;
@@ -322,21 +322,16 @@ window.selectLayer = (id)=>{
   selectedLayer = id;
   TransformArea.querySelectorAll('canvas').forEach(canvas=>canvas.onpointerdown=canvas.onpointermove=canvas.onpointerup=canvas.onpointercancel=()=>{});
   document.getElementById(id).style.pointerEvents = 'all';
+  let disable = (ids,tf)=>ids.forEach(id=>document.getElementById(id).disabled=tf);
   if (type==='draw') {
-    if (['select'].includes(tool)) window.setTool('pencil', document.getElementById('tools').children[0]);
-    document.getElementById('t-select').disabled = true;
-    document.getElementById('t-shapes').disabled = true;
-    document.getElementById('t-pencil').disabled = false;
-    document.getElementById('t-eraser').disabled = false;
-    document.getElementById('t-fill').disabled = false;
+    if (['select','shapes'].includes(tool)) window.setTool('pencil', document.getElementById('tools').children[0]);
+    disable(['t-select','t-shapes'], true);
+    disable(['t-pencil','t-eraser','t-fill'], false);
     handleActiveCanvas(document.getElementById(id));
   } else if (type==='shapes') {
     if (['pencil','eraser','fill'].includes(tool)) window.setTool('select', document.getElementById('tools').children[1]);
-    document.getElementById('t-select').disabled = false;
-    document.getElementById('t-shapes').disabled = false;
-    document.getElementById('t-pencil').disabled = true;
-    document.getElementById('t-eraser').disabled = true;
-    document.getElementById('t-fill').disabled = true;
+    disable(['t-select','t-shapes'], false);
+    disable(['t-pencil','t-eraser','t-fill'], true);
     handleActiveSVG(document.getElementById(id));
   }
 };
@@ -453,13 +448,8 @@ async function compositeLayers(preview=true, transparency=true) {
   let hs = window.projectdata.height/(preview?2:1);
   let offscreen = new OffscreenCanvas(ws, hs);
   const ctx = offscreen.getContext('2d');
-
-  if (transparency) {
-    ctx.clearRect(0, 0, ws, hs);
-  } else {
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, ws, hs);
-  }
+  ctx.fillStyle = '#000000';
+  ctx[transparency?'clearRect':'fillRect'](0, 0, ws, hs);
 
   let layers = window.projectdata.layers.toReversed();
   for (const layer of layers) {
@@ -470,7 +460,6 @@ async function compositeLayers(preview=true, transparency=true) {
       ctx.drawImage((await svgToImg(document.getElementById(layer.id))), 0, 0, w, h, 0, 0, ws, hs);
     }
   }
-
   return offscreen;
 }
 window.compositeLayers = compositeLayers;
@@ -492,6 +481,7 @@ function handleActiveCanvas(canvas) {
   ctx.imageSmoothingEnabled = false;
   window.cursorDown = (evt)=>{
     if (evt.button!==0) return;
+    ctx.globalCompositeOperation = 'source-over';
     if (tool==='fill') {
       let b = canvas.getBoundingClientRect();
       let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -502,10 +492,17 @@ function handleActiveCanvas(canvas) {
       let alpha = parseInt(primary.dataset.value.slice(7,9),16);
       color[3] = Number.isNaN(alpha)?255:alpha;
       if (colorCompare(color,target)) return;
-      let malpha = document.getElementById('e-malpha').checked??false;
-      if (malpha) color = color.slice(0,3);
+      if (window.tooloptions.malpha) color = color.slice(0,3);
       floodfill(imageData, x, y, target, color, document.getElementById('e-tol').value||0);
       ctx.putImageData(imageData, 0, 0);
+      trysave();
+    } else if (tool==='text') {
+      let text = prompt('Text');
+      if (!text||text.length<1) return;
+      let b = canvas.getBoundingClientRect();
+      ctx.fillStyle = primary.dataset.value;
+      ctx.font = `${window.tooloptions.tsize}px "${window.tooloptions.tfont}"`;
+      ctx.fillText(text, globalXToLocal(evt.cx,b), globalYToLocal(evt.cy,b));
       trysave();
     } else if (tool==='image') {
       document.getElementById('tool-image-up').click();
@@ -520,12 +517,12 @@ function handleActiveCanvas(canvas) {
   window.cursorMove = (evt)=>{
     let pointer = pointers.get(evt.pointerId);
     if (pointer.button===0) {
-      if (['fill','image'].includes(tool)) return;
-      if ((document.getElementById('e-step')?.value||0)>distance(pointer, evt)) return;
+      if (!['pencil','eraser'].includes(tool)) return;
+      if (window.tooloptions.step>distance(pointer, evt)) return;
       let b = canvas.getBoundingClientRect();
       ctx.globalCompositeOperation = tool==='eraser'?'destination-out':'source-over';
       ctx.strokeStyle = primary.dataset.value;
-      ctx.lineWidth = document.getElementById('e-size').value||10;
+      ctx.lineWidth = window.tooloptions.size;
       ctx.lineCap = document.getElementById('e-cap').value||'round';
       ctx.beginPath();
       ctx.moveTo(globalXToLocal(pointer.x,b), globalYToLocal(pointer.y,b));
@@ -575,6 +572,12 @@ function handleActiveSVG(svg) {
     if (tool==='shapes') {
       drag = true;
       firstpos = [evt.cx,evt.cy];
+    } else if (tool==='text') {
+      let text = prompt('Text');
+      if (!text||text.length<1) return;
+      let b = svg.getBoundingClientRect();
+      svg.insertAdjacentHTML('beforeend', `<text onclick="window.svgclick(this)" fill="${primary.dataset.value}" stroke="none" x="${globalXToLocal(evt.cx,b)}" y="${globalYToLocal(evt.cy,b)}" font-family="${window.tooloptions.tfont}" font-size="${window.tooloptions.tsize}px" xfont-style="italic" xfont-weight="900">${text}</text>`);
+      trysave();
     } else if (tool==='image') {
       document.getElementById('tool-image-up').click();
       document.getElementById('tool-image-up').onchange = (evt2)=>{
@@ -589,7 +592,6 @@ function handleActiveSVG(svg) {
   window.cursorUp = (evt)=>{
     if (!drag) return;
     drag = false;
-    let content = '';
     let b = svg.getBoundingClientRect();
     let [x1, y1] = [globalXToLocal(firstpos[0],b), globalYToLocal(firstpos[1],b)];
     let [x2, y2] = [globalXToLocal(evt.cx,b), globalYToLocal(evt.cy,b)];
@@ -597,6 +599,7 @@ function handleActiveSVG(svg) {
     let [w, h] = [Math.abs(x2-x1), Math.abs(y2-y1)];
     if (w===0&&h===0) { w = 10; h = 10; }
     [w, h] = [Math.max(w,1), Math.max(h,1)];
+    let content = '';
     switch(window.tooloptions.shape) {
       case 'square':
         content = `<rect onclick="window.svgclick(this)" fill="${primary.dataset.value}" x="${x}" y="${y}" width="${w}" height="${h}" rx="0" stroke="none"></rect>`;
@@ -677,20 +680,26 @@ let transform = (evt)=>{
     case 'pencil':
     case 'eraser':
       Cursor.style.display = '';
+      FullArea.style.cursor = '';
       Cursor.style.width = Cursor.style.height = Math.round((document.getElementById('e-size')?.value||10)*(TransformArea.offsetWidth/window.projectdata.width))+'px';
       Cursor.style.borderRadius = document.getElementById('e-cap').value==='round'?'100rem':'0px';
-      if (TransformArea.style.cursor==='crosshair') TransformArea.style.cursor = '';
       break;
     case 'select':
+    case 'fill':
+    case 'image':
       Cursor.style.display = 'none';
-      if (TransformArea.style.cursor!=='move') TransformArea.style.cursor = 'crosshair';
+      FullArea.style.cursor = 'crosshair';
       break;
     case 'shapes':
       Cursor.style.display = '';
+      FullArea.style.cursor = '';
       Cursor.style.width = '15px';
       Cursor.style.height = '15px';
       Cursor.style.borderRadius = window.tooloptions.shape==='square'?'0px':'100rem';
-      if (TransformArea.style.cursor==='crosshair') TransformArea.style.cursor = '';
+      break;
+    case 'text':
+      Cursor.style.display = 'none';
+      FullArea.style.cursor = 'text';
       break;
   }
 };
@@ -831,17 +840,18 @@ function mzinter() {
     pointers.set(evt.pointerId, pointer);
   };
   TransformArea.onpointerup = TransformArea.onpointercancel = (evt)=>{
+    if (!pointers.has(evt.pointerId)) return;
     TransformArea.releasePointerCapture(evt.pointerId);
-    let pointer = pointers.get(evt.pointerId);
+    let pointerb = pointers.get(evt.pointerId).button;
     pointers.delete(evt.pointerId);
     gestureData = { center: null, distance: null, angle: null };
-    let b = TransformArea.getBoundingClientRect();
-    let pp = rotateAround(evt.clientX, evt.clientY, b.left+b.width/2, b.top+b.height/2, -rotate);
-    evt.cx = pp.x;
-    evt.cy = pp.y;
-    if (pointer.button===1) {
+    if (pointerb===1) {
       TransformArea.style.cursor = '';
     } else {
+      let b = TransformArea.getBoundingClientRect();
+      let pp = rotateAround(evt.clientX, evt.clientY, b.left+b.width/2, b.top+b.height/2, -rotate);
+      evt.cx = pp.x;
+      evt.cy = pp.y;
       window.cursorUp(evt);
     }
   };
