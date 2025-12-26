@@ -51,6 +51,20 @@ input[type="number"] {
   flex-wrap: wrap;
   margin: 5px 0px;
 }
+.hellobar {
+  display: flex;
+}
+.hellobar h2 {
+  flex: 1;
+  margin: 0px;
+}
+.hellobar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5px;
+  border: none;
+}
 .project {
   display: flex;
   flex-direction: column;
@@ -71,6 +85,20 @@ input[type="number"] {
 .project button {
   border: none;
   background-color: var(--bg-3);
+}
+
+.presizes {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 2px;
+  margin: 2px 0px 4px;
+}
+.presizes button {
+  font-size: 70%;
+  color: var(--text-2);
+  padding: 3px;
+  border: 1px var(--text-2) solid;
+  border-radius: 0.25rem;
 }
 
 #hwanotice {
