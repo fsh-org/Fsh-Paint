@@ -666,7 +666,7 @@ let gestureData = { center: null, distance: null, angle: null };
 const Cursor = document.getElementById('cursor');
 let transform = (evt)=>{
   // Canvas
-  TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%) translate(${x}px, ${y}px) scale(${zoom}) rotate(${rotate}rad)`;
+  TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%) scale(${zoom}) translate(${x}px, ${y}px) rotate(${rotate}rad)`;
   // Cursor
   if (evt.pointerType==='touch') return;
   let b = TransformArea.getBoundingClientRect();
