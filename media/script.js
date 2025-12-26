@@ -20,7 +20,7 @@ const rotateAround = (x,y,cx,cy,rad)=>{
 };
 const globalXToLocal = (x,b)=>(x-b.left)/b.width*window.projectdata.width;
 const globalYToLocal = (y,b)=>(y-b.top)/b.height*window.projectdata.height;
-const colorCompare = (a,b,tol)=>(Math.abs(a[0]-b[0])<=tol)&&(Math.abs(a[1]-b[1])<=tol)&&(Math.abs(a[2]-b[2])<=tol);
+const colorCompare = (a,i,b,tol)=>(Math.abs(a[i]-b[0])<=tol)&&(Math.abs(a[i+1]-b[1])<=tol)&&(Math.abs(a[i+2]-b[2])<=tol);
 
 let oklchToHexCache = new Map();
 function oklchToHex(L, c, hDeg) {
@@ -102,7 +102,7 @@ function trysave() {
   savededupe = setTimeout(async()=>{
     savededupe = null;
     save()
-  }, 10);
+  }, 20);
 }
 window.trysave = trysave;
 
@@ -136,61 +136,40 @@ window.setTool = (tol, _this)=>{
   tool = tol;
   document.querySelector('.tools [selected]').removeAttribute('selected');
   _this.setAttribute('selected', true);
-
+  if (ExtraTool.getAttribute('type')===tool) return;
+  ExtraTool.setAttribute('type', tool);
   switch(tool) {
     case 'pencil':
     case 'eraser':
-      if (ExtraTool.getAttribute('type')!=='draw') {
-        ExtraTool.setAttribute('type', 'draw');
-        ExtraTool.innerHTML = `<label>Size: <input id="e-size" type="number" min="1" value="${window.tooloptions.size}" oninput="window.tooloptions.size=this.value"></label>
+      ExtraTool.innerHTML = `<label>Size: <input id="e-size" type="number" min="1" value="${window.tooloptions.size}" oninput="window.tooloptions.size=this.value"></label>
 <label>Cap: <select id="e-cap"><option>round</option><option>butt</option><option>square</option></select></label>
 <label>Step: <input id="e-step" type="number" min="0" value="${window.tooloptions.step}" oninput="window.tooloptions.step=this.value"></label>`;
-      }
+      break;
+    case 'select':
+    case 'image':
+      ExtraTool.innerText = '';
       break;
     case 'fill':
-      if (ExtraTool.getAttribute('type')!=='fill') {
-        ExtraTool.setAttribute('type', 'fill');
-        ExtraTool.innerHTML = `<label>Tolerance: <input id="e-tol" type="number" min="0" value="${window.tooloptions.tolerance}" oninput="window.tooloptions.tolerance=this.value"></label>
-<label>Maintain alpha: <input id="e-malpha" type="checkbox" ${window.tooloptions.malpha?'checked':''} onchange="window.tooloptions.malpha=this.value"></label>`;
-      }
-      break;
-
-    case 'select':
-      if (ExtraTool.getAttribute('type')!=='select') {
-        ExtraTool.setAttribute('type', 'select');
-        ExtraTool.innerText = '';
-      }
+      ExtraTool.innerHTML = `<label>Tolerance: <input id="e-tol" type="number" min="0" value="${window.tooloptions.tolerance}" oninput="window.tooloptions.tolerance=this.value"></label>
+<label>Maintain alpha: <input id="e-malpha" type="checkbox" ${window.tooloptions.malpha?'checked':''} onchange="window.tooloptions.malpha=this.checked"></label>`;
       break;
     case 'shapes':
-      if (ExtraTool.getAttribute('type')!=='shapes') {
-        ExtraTool.setAttribute('type', 'shapes');
-        ExtraTool.innerHTML = shapes.map(s=>`<button name="${s.name}"${window.tooloptions.shape===s.name?' selected':''} aria-label="${s.name}" title="${s.name}">${s.svg}</button>`).join('');
-        ExtraTool.querySelectorAll('button').forEach(btn=>{
-          btn.onclick = ()=>{
-            let name = btn.getAttribute('name');
-            window.tooloptions.shape = name;
-            document.querySelector('#extra button[selected]').removeAttribute('selected');
-            btn.setAttribute('selected', true);
-          };
-        });
-      }
+      ExtraTool.innerHTML = shapes.map(s=>`<button name="${s.name}"${window.tooloptions.shape===s.name?' selected':''} aria-label="${s.name}" title="${s.name}">${s.svg}</button>`).join('');
+      ExtraTool.querySelectorAll('button').forEach(btn=>{
+        btn.onclick = ()=>{
+          let name = btn.getAttribute('name');
+          window.tooloptions.shape = name;
+          document.querySelector('#extra button[selected]').removeAttribute('selected');
+          btn.setAttribute('selected', true);
+        };
+      });
       break;
     case 'text':
-      if (ExtraTool.getAttribute('type')!=='text') {
-        ExtraTool.setAttribute('type', 'text');
-        ExtraTool.innerText = '';
-        getFonts().then(fonts=>{
-          ExtraTool.innerHTML = `<label>Size: <input id="e-tsize" type="number" min="1" value="${window.tooloptions.tsize}" oninput="window.tooloptions.tsize=this.value"></label>
+      ExtraTool.innerText = '';
+      getFonts().then(fonts=>{
+        ExtraTool.innerHTML = `<label>Size: <input id="e-tsize" type="number" min="1" value="${window.tooloptions.tsize}" oninput="window.tooloptions.tsize=this.value"></label>
 <label>Font: <select id="e-tfont" onchange="window.tooloptions.tfont=this.value">${fonts.map(f=>`<option${f===window.tooloptions.tfont?' selected':''}>${f}</option>`).join('')}</select></label>`;
-        });
-      }
-      break;
-
-    case 'image':
-      if (ExtraTool.getAttribute('type')!=='image') {
-        ExtraTool.setAttribute('type', 'image');
-        ExtraTool.innerText = '';
-      }
+      });
       break;
   }
 };
@@ -232,7 +211,7 @@ let boxPicker = new iro.ColorPicker("#colorpicker", {
 });
 setTimeout(()=>{
   document.getElementById('colorpicker').insertAdjacentHTML('beforeend', '<input id="hexcolor" value="#ffffff">');
-}, 10);
+}, 20);
 function showColors() {
   primary.onclick = secondary.onclick = (evt)=>{
     if (colorPicker.open) colorPicker.close();
@@ -464,16 +443,22 @@ async function compositeLayers(preview=true, transparency=true) {
 }
 window.compositeLayers = compositeLayers;
 
-function floodfill(imageData, x, y, target, color, tol) {
-  let offset = (y * imageData.width + x) * 4;
-  if (!colorCompare(imageData.data.slice(offset, offset+4),target,tol)) return;
+function floodfill(imageData, ix, iy, target, color, tol) {
+  let visited = new Uint8Array(imageData.width*imageData.height);
+  let stack = [[ix,iy]];
 
-  imageData.data.set(color, offset);
-
-  floodfill(imageData, Math.max(x-1, 0), y, target, color, tol);
-  floodfill(imageData, Math.min(x+1, imageData.width), y, target, color, tol);
-  floodfill(imageData, x, Math.max(y-1, 0), target, color, tol);
-  floodfill(imageData, x, Math.min(y+1, imageData.height), target, color, tol);
+  while(stack.length) {
+    let [x,y] = stack.pop();
+    let i = x+imageData.width*y;
+    if (visited[i]) continue;
+    visited[i] = 1;
+    if (!colorCompare(imageData.data,i*4,target,tol)) continue;
+    imageData.data.set(color, i*4);
+    if (y!==0) stack.push([x, y-1]);
+    if (x!==imageData.width-1) stack.push([x+1, y]);
+    if (y!==imageData.height-1) stack.push([x, y+1]);
+    if (x!==0) stack.push([x-1, y]);
+  }
 }
 
 function handleActiveCanvas(canvas) {
@@ -491,9 +476,9 @@ function handleActiveCanvas(canvas) {
       let color = [parseInt(primary.dataset.value.slice(1,3),16),parseInt(primary.dataset.value.slice(3,5),16),parseInt(primary.dataset.value.slice(5,7),16),255];
       let alpha = parseInt(primary.dataset.value.slice(7,9),16);
       color[3] = Number.isNaN(alpha)?255:alpha;
-      if (colorCompare(color,target)) return;
+      if (colorCompare(imageData.data,(y*imageData.width+x)*4,color,window.tooloptions.tolerance)) return;
       if (window.tooloptions.malpha) color = color.slice(0,3);
-      floodfill(imageData, x, y, target, color, document.getElementById('e-tol').value||0);
+      floodfill(imageData, x, y, target, color, window.tooloptions.tolerance);
       ctx.putImageData(imageData, 0, 0);
       trysave();
     } else if (tool==='text') {
