@@ -507,7 +507,8 @@ function handleActiveCanvas(canvas) {
       let b = canvas.getBoundingClientRect();
       ctx.globalCompositeOperation = tool==='eraser'?'destination-out':'source-over';
       ctx.strokeStyle = primary.dataset.value;
-      ctx.lineWidth = window.tooloptions.size;
+      let press = evt.pointerType==='mouse'?0.5:(Math.max(0,Math.min(1,evt.pressure))??0.5);
+      ctx.lineWidth = window.tooloptions.size*(press*press+0.75);
       ctx.lineCap = document.getElementById('e-cap').value||'round';
       ctx.beginPath();
       ctx.moveTo(globalXToLocal(pointer.x,b), globalYToLocal(pointer.y,b));
