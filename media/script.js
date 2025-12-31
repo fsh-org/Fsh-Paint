@@ -783,7 +783,7 @@ function mzinter() {
     }
   };
   TransformArea.onpointermove = (evt, coal=true)=>{
-    if (coal) {
+    if (coal&&evt.getCoalescedEvents) {
       let events = evt.getCoalescedEvents();
       if (events) {
         events.forEach(event=>{TransformArea.onpointermove(event, false)});
