@@ -118,6 +118,30 @@ function setActions() {
         case 'export':
           document.getElementById('export').showModal();
           break;
+        case 'rotate':
+          rotate += Math.PI/2;
+          transform({ pointerType: 'touch' });
+          break;
+        case 'crotate':
+          rotate -= Math.PI/2;
+          transform({ pointerType: 'touch' });
+          break;
+        case 'hflip':
+          hflip = !hflip;
+          transform({ pointerType: 'touch' });
+          break;
+        case 'vflip':
+          vflip = !vflip;
+          transform({ pointerType: 'touch' });
+          break;
+        case 'pzoom':
+          zoom += 0.1;
+          transform({ pointerType: 'touch' });
+          break;
+        case 'mzoom':
+          zoom -= 0.1;
+          transform({ pointerType: 'touch' });
+          break;
       }
     };
   });
@@ -649,13 +673,15 @@ let x = 0;
 let y = 0;
 let zoom = 1;
 let rotate = 0;
+let hflip = false;
+let vflip = false;
 let woh = true;
 let pointers = new Map();
 let gestureData = { center: null, distance: null, angle: null };
 const Cursor = document.getElementById('cursor');
 let transform = (evt)=>{
   // Canvas
-  TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%) scale(${zoom}) translate(${x}px, ${y}px) rotate(${rotate}rad)`;
+  TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%) scale(${zoom}) translate(${x}px, ${y}px) rotate(${rotate}rad) ${hflip?'rotateY(180deg)':''} ${vflip?'rotateX(180deg)':''}`;
   // Cursor
   if (evt.pointerType==='touch') return;
   let b = TransformArea.getBoundingClientRect();
