@@ -328,12 +328,12 @@ window.selectLayer = (id)=>{
   let disable = (ids,tf)=>ids.forEach(id=>document.getElementById(id).disabled=tf);
   if (type==='draw') {
     if (['select','shapes'].includes(tool)) window.setTool('pencil', document.getElementById('tools').children[0]);
-    disable(['t-select','t-shapes'], true);
+    disable(['t-select'], true);
     disable(['t-pencil','t-eraser','t-fill'], false);
     handleActiveCanvas(document.getElementById(id));
   } else if (type==='shapes') {
     if (['pencil','eraser','fill'].includes(tool)) window.setTool('select', document.getElementById('tools').children[1]);
-    disable(['t-select','t-shapes'], false);
+    disable(['t-select'], false);
     disable(['t-pencil','t-eraser','t-fill'], true);
     handleActiveSVG(document.getElementById(id));
   }
@@ -486,6 +486,8 @@ function floodfill(imageData, ix, iy, target, color, tol) {
 }
 
 function handleActiveCanvas(canvas) {
+  let drag = false;
+  let firstpos = [0,0];
   let ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   window.cursorDown = (evt)=>{
@@ -505,6 +507,9 @@ function handleActiveCanvas(canvas) {
       floodfill(imageData, x, y, target, color, window.tooloptions.tolerance);
       ctx.putImageData(imageData, 0, 0);
       trysave();
+    } else if (tool==='shapes') {
+      drag = true;
+      firstpos = [evt.cx,evt.cy];
     } else if (tool==='text') {
       let text = prompt('Text');
       if (!text||text.length<1) return;
@@ -524,6 +529,7 @@ function handleActiveCanvas(canvas) {
     }
   };
   window.cursorMove = (evt)=>{
+    if (drag) return;
     let pointer = pointers.get(evt.pointerId);
     if (pointer.button===0) {
       if (!['pencil','eraser'].includes(tool)) return;
@@ -541,7 +547,39 @@ function handleActiveCanvas(canvas) {
       trysave();
     }
   };
-  window.cursorUp = ()=>{};
+  window.cursorUp = (evt)=>{
+    if (!drag) return;
+    if (tool!=='shapes') return;
+    drag = false;
+    let b = canvas.getBoundingClientRect();
+    let [x1, y1] = [globalXToLocal(firstpos[0],b), globalYToLocal(firstpos[1],b)];
+    let [x2, y2] = [globalXToLocal(evt.cx,b), globalYToLocal(evt.cy,b)];
+    let [x, y] = [Math.min(x1,x2), Math.min(y1,y2)];
+    let [w, h] = [Math.abs(x2-x1), Math.abs(y2-y1)];
+    if (w===0&&h===0) { w = 10; h = 10; }
+    [w, h] = [Math.max(w,1), Math.max(h,1)];
+    ctx.fillStyle = primary.dataset.value;
+    ctx.lineWidth = 15;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = primary.dataset.value;
+    switch(window.tooloptions.shape) {
+      case 'square':
+        ctx.fillRect(x, y, w, h);
+        break;
+      case 'circle':
+        ctx.beginPath();
+        ctx.ellipse(x+w/2, y+h/2, w/2, h/2, 0, 0, Math.PI*2);
+        ctx.fill();
+        break;
+      case 'line':
+        ctx.beginPath();
+        ctx.moveTo(globalXToLocal(firstpos[0],b), globalYToLocal(firstpos[1],b));
+        ctx.lineTo(globalXToLocal(evt.cx,b), globalYToLocal(evt.cy,b));
+        ctx.stroke();
+        break;
+    }
+    trysave();
+  };
 }
 window.svgactive = null;
 window.svgclick = (_this)=>{
