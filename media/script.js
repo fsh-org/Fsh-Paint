@@ -275,6 +275,33 @@ function showColors() {
   }).join('');
 }
 
+// Effects
+let AvailableEffects = { // Unit, Default, Min, Max
+  sepia: ['px', 0, 0, 25],
+  brightness: ['%', 100, 0, 1000],
+  contrast: ['%', 100, 0, 1000],
+  grayscale: ['%', 0, 0, 100],
+  'hue-rotate': ['deg', 0, 0, 360],
+  invert: ['%', 0, 0, 100],
+  opacity: ['%', 100, 0, 100],
+  saturate: ['%', 100, 0, 1000],
+  sepia: ['%', 0, 0, 100]
+};
+tippy(document.querySelector('#effects-panel .add'), {
+  allowHTML: true,
+  content: Object.keys(AvailableEffects).map(fil=>`<button onclick="window.addeffect('${fil}')">${fil.replace(/(?:^|\-)[a-z]/g,match=>match.toUpperCase().replace('-',' '))}</button>`).join(''),
+  interactive: true,
+  trigger: 'click',
+  placement: 'bottom-end',
+  sticky: true
+});
+function applyeffects() {
+  window.projectdata.layers.forEach(layer=>{
+    if (!layer.effects?.length) return;
+    document.getElementById(layer.id).style.filter = layer.effects.map(effect=>`${effect.type}(${effect.value}${AvailableEffects[effect.type][0]})`).join(' ');
+  });
+}
+
 // Layers
 const layerIcons = {
   draw: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.4876 170.991C59.9825 149.957 91.1969 147.111 112.19 164.656C133.182 182.201 136.017 213.475 118.523 234.51L116.663 236.746C99.8583 256.951 70.3108 260.66 49.0383 245.236L5.21509 213.462C1.65427 210.88 -0.307134 206.625 0.0393098 202.234C0.491684 196.503 4.75066 191.804 10.3987 190.805L18.7815 189.321C23.7638 188.44 28.3307 185.976 31.8088 182.294L42.4876 170.991ZM189.217 11.1699C204.048 -2.06402 226.313 -2.42185 241.57 10.3291C256.827 23.0803 260.481 45.1 250.161 62.1045L182.339 173.861C177.989 181.029 171.502 186.646 163.793 189.917L152.13 194.866C149.776 195.865 147.048 194.92 145.811 192.677L134.174 171.573C131.177 166.138 127.198 161.308 122.44 157.331L118.74 154.239C113.981 150.262 108.526 147.207 102.654 145.23L79.8518 137.551C77.4274 136.734 76.0086 134.214 76.5657 131.713L79.3254 119.322C81.1492 111.133 85.4936 103.725 91.7454 98.1465L189.217 11.1699Z"/></svg>',
@@ -302,7 +329,7 @@ new Sortable(LayerList, {
 let selectedLayer = '';
 window.createLayer = (type)=>{
   let id = Math.round(Math.random()*10**9).toString(36);
-  window.projectdata.layers.unshift({ id, type, name: 'New layer', hidden: false });
+  window.projectdata.layers.unshift({ id, type, name: 'New layer', hidden: false, effects: [] });
   if (type==='draw') {
     TransformArea.insertAdjacentHTML('beforeend', `<canvas id="${id}" width="${window.projectdata.width}" height="${window.projectdata.height}"></canvas>`);
   } else if (type==='shapes') {
@@ -338,6 +365,12 @@ window.selectLayer = (id)=>{
     handleActiveSVG(document.getElementById(id));
   }
 };
+window.renameLayer = (_this, id, name, type)=>{
+  LayersArea.classList.remove('contracted')
+  _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()">`;
+  LayerList.querySelector('input.new')?.focus();
+  LayerList.querySelector('input.new')?.select();
+};
 window.togvisLayer = (id,_this)=>{
   let idx = window.projectdata.layers.findIndex(l=>l.id===id);
   let hidden = !window.projectdata.layers[idx].hidden;
@@ -364,6 +397,35 @@ window.dupeLayer = async(id)=>{
   window.selectLayer(copy.id);
   trysave();
 };
+window.effectsLayer = async(btn, id)=>{
+  let idx = window.projectdata.layers.findIndex(l=>l.id===id);
+  window.projectdata.layers[idx].effects ??= [];
+  let panel = document.getElementById('effects-panel');
+  panel.show();
+  let bounds = btn.getBoundingClientRect();
+  panel.style.left = bounds.left+'px';
+  panel.style.top = bounds.top+'px';
+  function show() {
+    panel.querySelector('.list').innerHTML = window.projectdata.layers[idx].effects
+      .map((effect,i)=>`<div>
+  <div>
+    <label for="eff-${i}">${effect.type.replace(/(?:^|\-)[a-z]/g,match=>match.toUpperCase().replace('-',' '))}:</label>
+    <button onclick="window.projectdata.layers[${idx}].effects[${i}].value=${AvailableEffects[effect.type][1]};trysave();window.refresheffectlist();applyeffects()" aria-label="Reset to default" title="Reset to default"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256"><path d="M95.7647 241.537C75.8713 235.169 58.0916 223.746 44.0925 208.519C37.3753 201.213 39.6356 189.929 47.8637 184.379C56.0921 178.828 67.1536 181.182 74.3267 188.042C83.4684 196.784 94.5279 203.402 106.722 207.305C124.663 213.048 144.015 212.583 161.659 205.986C179.304 199.389 194.215 187.043 203.987 170.938C213.76 154.833 217.826 135.907 215.53 117.209C213.235 98.5119 204.711 81.1319 191.333 67.8698C177.955 54.6078 160.501 46.2358 141.785 44.1034C123.069 41.971 104.179 46.2031 88.1603 56.116C81.0132 60.5389 74.6228 65.9771 69.165 72.2172L90.5145 79.9878C94.9968 81.6194 95.4747 87.7693 91.2986 90.0743L35.8968 120.646C32.9482 122.273 29.2415 120.924 28.0287 117.782L5.23964 58.7514C3.52223 54.3014 7.84141 49.8975 12.3237 51.5287L33.7283 59.3193C43.0535 45.8251 55.1138 34.2979 69.2466 25.552C92.1304 11.3907 119.116 5.34589 145.854 8.39214C172.591 11.4384 197.525 23.3983 216.636 42.344C235.748 61.2898 247.925 86.1183 251.204 112.829C254.484 139.54 248.675 166.577 234.714 189.583C220.753 212.59 199.453 230.228 174.247 239.652C149.04 249.077 121.394 249.741 95.7647 241.537Z"></path></svg></button>
+    <div style="flex:1"></div>
+    <button onclick="window.projectdata.layers[${idx}].effects.splice(${i},1);trysave();window.refresheffectlist();applyeffects()" aria-label="Remove effect" title="Remove effect"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256"><rect y="103" width="256" height="50" rx="25"/></svg></button>
+  </div>
+  <input id="eff-${i}" type="range" value="${effect.value}" min="${AvailableEffects[effect.type][2]}" max="${AvailableEffects[effect.type][3]}" oninput="window.projectdata.layers[${idx}].effects[${i}].value=this.value;trysave();applyeffects()">
+</div>`)
+      .join('');
+  }
+  window.refresheffectlist = show;
+  window.addeffect = (type)=>{
+    window.projectdata.layers[idx].effects.push({ type, value: AvailableEffects[type][1] });
+    show();
+    trysave();
+  };
+  show();
+};
 window.rasterLayer = async(id)=>{
   let idx = window.projectdata.layers.findIndex(l=>l.id===id);
   window.projectdata.layers[idx].type = 'draw';
@@ -381,12 +443,6 @@ window.deleteLayer = (id)=>{
   showLayers();
   trysave();
 };
-window.renameLayer = (_this, id, name, type)=>{
-  LayersArea.classList.remove('contracted')
-  _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()">`;
-  LayerList.querySelector('input.new')?.focus();
-  LayerList.querySelector('input.new')?.select();
-};
 function showLayers() {
   LayerList.innerHTML = window.projectdata.layers
     .map(layer=>`<div id="l-${layer.id}"${layer.hidden?' style="color:var(--text-3)"':''}${layer.id===selectedLayer?' selected':''}>
@@ -402,10 +458,10 @@ function showLayers() {
     tippy(btn, {
       allowHTML: true,
       content: `<button onclick="window.renameLayer(document.querySelector('#l-${id} [data-namesec]'), '${id}', '${name}', '${type}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M72.5096 256C71.9573 256 71.5096 255.552 71.5096 255V238.941C71.5096 238.389 71.9573 237.941 72.5096 237.941H79.7382C84.9855 237.941 89.7557 237.463 94.0489 236.507C98.5806 235.312 102.158 233.041 104.782 229.695C107.644 226.109 109.075 220.932 109.075 214V17.9272H74.7295C67.8127 17.9272 62.3269 19.3614 58.2723 22.2297C54.2176 24.859 51.2362 28.4444 49.3281 32.986C47.42 37.2885 46.1082 42.0691 45.3927 47.3277L43.7065 61.8604C43.648 62.3647 43.2209 62.7451 42.7132 62.7451H26.0289C25.4655 62.7451 25.0133 62.2798 25.0293 61.7166L26.7611 0.971502C26.7766 0.430536 27.2195 0 27.7607 0H227.239C227.78 0 228.223 0.430535 228.239 0.971502L229.971 61.7166C229.987 62.2798 229.535 62.7451 228.971 62.7451H212.287C211.779 62.7451 211.352 62.3647 211.294 61.8604L209.607 47.3277C209.13 42.0691 207.819 37.2885 205.672 32.986C203.764 28.4444 200.782 24.859 196.728 22.2297C192.673 19.3614 187.068 17.9272 179.913 17.9272H145.209V214C145.209 221.41 146.521 225.866 149.145 229.69C151.768 233.275 155.346 235.315 159.878 236.51C164.41 237.705 169.299 237.941 174.546 237.941H181.775C182.327 237.941 182.775 238.389 182.775 238.941V255C182.775 255.552 182.327 256 181.775 256H72.5096Z"/></svg> Rename</button>
-<button onclick="window.dupeLayer('${id}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect x="88.5" y="88.5" width="155" height="155" rx="17.5" stroke-width="25" fill="none"/><rect width="180" height="180" rx="30"/></svg> Duplicate</button>`+
-(true?'':`<button onclick="window.effectsLayer('${id}')"> Effects</button>`)+
-(type==='shapes'?`<button onclick="window.rasterLayer('${id}')">Rasterize</button>`:'')+
-`<button onclick="window.deleteLayer('${id}')" style="color:var(--red-1)"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.6776 7.32227C32.9145 -2.44063 17.0852 -2.44077 7.32214 7.32227C-2.44082 17.0853 -2.44069 32.9146 7.32214 42.6777L92.2616 127.617L7.32214 212.557C-2.44091 222.32 -2.44083 238.149 7.32214 247.912C17.0852 257.675 32.9145 257.675 42.6776 247.912L127.617 162.973L212.557 247.912C222.32 257.675 238.149 257.675 247.912 247.912C257.675 238.149 257.675 222.32 247.912 212.557L162.973 127.617L247.912 42.6777C257.675 32.9146 257.675 17.0853 247.912 7.32227C238.149 -2.44079 222.32 -2.44068 212.557 7.32227L127.617 92.2617L42.6776 7.32227Z"/></svg> Delete</button>`,
+<button onclick="window.dupeLayer('${id}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect x="88.5" y="88.5" width="155" height="155" rx="17.5" stroke-width="25" fill="none"/><rect width="180" height="180" rx="30"/></svg> Duplicate</button>
+<button onclick="window.effectsLayer(this, '${id}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M117.672 7.21582C121.197 -2.40484 134.803 -2.40478 138.328 7.21582L167.789 87.6162C167.891 87.8923 168.108 88.1107 168.384 88.2119L248.786 117.672C258.406 121.197 258.406 134.804 248.786 138.329L168.384 167.789C168.108 167.89 167.891 168.108 167.789 168.384L138.328 248.785C134.803 258.405 121.198 258.405 117.672 248.785L88.2123 168.384C88.1111 168.108 87.8926 167.89 87.6166 167.789L7.21521 138.329C-2.40516 134.804 -2.40504 121.197 7.21521 117.672L87.6166 88.2119C87.8927 88.1107 88.1111 87.8923 88.2123 87.6162L117.672 7.21582ZM89.9408 163.354C90.1363 163.451 90.3257 163.558 90.5082 163.675L90.2299 163.507C90.1351 163.453 90.0387 163.402 89.9408 163.354ZM8.69373 122.46C8.53563 122.525 8.38275 122.596 8.23474 122.671C8.38269 122.596 8.5357 122.526 8.69373 122.461V122.46Z"/></svg> Effects</button>
+${type==='shapes'?`<button onclick="window.rasterLayer('${id}')">Rasterize</button>`:''}
+<button onclick="window.deleteLayer('${id}')" style="color:var(--red-1)"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.6776 7.32227C32.9145 -2.44063 17.0852 -2.44077 7.32214 7.32227C-2.44082 17.0853 -2.44069 32.9146 7.32214 42.6777L92.2616 127.617L7.32214 212.557C-2.44091 222.32 -2.44083 238.149 7.32214 247.912C17.0852 257.675 32.9145 257.675 42.6776 247.912L127.617 162.973L212.557 247.912C222.32 257.675 238.149 257.675 247.912 247.912C257.675 238.149 257.675 222.32 247.912 212.557L162.973 127.617L247.912 42.6777C257.675 32.9146 257.675 17.0853 247.912 7.32227C238.149 -2.44079 222.32 -2.44068 212.557 7.32227L127.617 92.2617L42.6776 7.32227Z"/></svg> Delete</button>`,
       interactive: true,
       trigger: 'click',
       placement: 'left-start',
@@ -457,6 +513,7 @@ async function compositeLayers(preview=true, transparency=true) {
   let layers = window.projectdata.layers.toReversed();
   for (const layer of layers) {
     if (layer.hidden) continue;
+    ctx.filter = layer.effects?.length?layer.effects.map(effect=>`${effect.type}(${effect.value}${AvailableEffects[effect.type][0]})`).join(' '):'';
     if (layer.type==='draw') {
       ctx.drawImage(document.getElementById(layer.id), 0, 0, w, h, 0, 0, ws, hs);
     } else if (layer.type==='shapes') {
@@ -941,6 +998,7 @@ window.loadProject = (id)=>{
       showLayers();
       window.selectLayer(window.projectdata.layers[0].id);
     }
+    applyeffects();
     trysave();
   };
 };

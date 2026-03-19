@@ -342,6 +342,24 @@ main {
   margin: 0px !important;
 }
 
+#effects-panel {
+  position: absolute;
+  margin: 0px;
+  transform: translateX(calc(-100% - 10px));
+  z-index: 99999;
+}
+#effects-panel button {
+  display: inline-flex;
+  border: none;
+  padding: 2px;
+}
+#effects-panel .list > div > div {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  white-space: nowrap;
+}
+
 @media (max-width: 700px) {
   .nomobile {
     display: none;
