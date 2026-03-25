@@ -277,7 +277,7 @@ function showColors() {
 
 // Effects
 let AvailableEffects = { // Unit, Default, Min, Max
-  sepia: ['px', 0, 0, 25],
+  blur: ['px', 0, 0, 25],
   brightness: ['%', 100, 0, 1000],
   contrast: ['%', 100, 0, 1000],
   grayscale: ['%', 0, 0, 100],
