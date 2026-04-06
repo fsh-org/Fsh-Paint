@@ -928,11 +928,16 @@ function mzinter() {
       gestureData.center = cent;
       // Distance
       let dist = distance(p1, p2);
-      if (gestureData.distance&&Math.abs((dist/gestureData.distance)-1)>0.01) zoom += (dist/gestureData.distance)-1;
+      if (gestureData.distance&&Math.abs((dist/gestureData.distance)-1)>0.01) zoom *= dist/gestureData.distance;
       gestureData.distance = dist;
       // Angle
       let ang = angle(p1, p2);
-      if (gestureData.angle&&Math.abs(ang-gestureData.angle)>(Math.PI/180)) rotate += ang-gestureData.angle;
+      if (gestureData.angle) {
+        let diff = ang-gestureData.angle;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        if (Math.abs(diff)>(Math.PI/720)) rotate += diff*0.75;
+      }
       gestureData.angle = ang;
       transform(evt);
     } else if (pointer.button===1) {
