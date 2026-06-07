@@ -79,8 +79,8 @@
       </div>
       <label>Transparency <input id="ex-trans" type="checkbox" checked></label>
       <br>
-      <label for="ex-qual" style="font-family:ui-monospace,monospace">90%</label>
-      <input id="ex-qual" type="range" min="1" max="100" value="90" step="1" oninput="document.querySelector('#export label[for]').innerText=this.value+'%'" disabled>
+      <label for="ex-qual" style="font-family:ui-monospace,monospace;white-space:break-spaces;">90%</label>
+      <input id="ex-qual" type="range" min="1" max="100" value="90" step="1" oninput="document.querySelector('#export label[for]').innerText=this.value.toString().padStart(3,' ')+'%'" disabled>
       <br>
       <button class="export">Export</button>
       <script type="module">
@@ -101,7 +101,6 @@
             document.querySelector('#export .type button[selected]').removeAttribute('selected');
             btn.setAttribute('selected', true);
             document.getElementById('ex-trans').disabled = ['jpeg','bmp'].includes(window.exporttype);
-            if (['jpeg','bmp'].includes(window.exporttype)) document.getElementById('ex-trans').checked = false;
             document.getElementById('ex-qual').disabled = !['jpeg','webp'].includes(window.exporttype);
           };
         });
@@ -131,6 +130,10 @@
       </div>
       <div class="list"></div>
     </dialog>
+    <dialog id="blend-panel" closedby="any">
+      <b>Blend mode</b>
+      <select></select>
+    </dialog>
     <nav>
       <div class="nomobile">
         <img src="https://fsh.plus/fsh.png" width="50" height="50" alt="Fsh logo">
@@ -159,11 +162,11 @@
       </div>
       <input id="tool-image-up" type="file" accept="image/*" style="display:none">
       <vr></vr>
+      <button id="rotatecolor" aria-label="Swap colors" title="Swap colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M72.7108 15L72.7107 241" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M129.932 72L74.7071 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M15.7782 72L71.0036 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M183 241L183 15" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M126.029 184L182.739 240.711" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M239.682 184L182.971 240.711" stroke-width="30" stroke-linecap="round" fill="none"/></svg></button>
       <div id="currentcolors">
         <button id="primary" style="--color:#ffffff" data-value="#ffffff" aria-label="Choose primary color" aria-haspopup="dialog"></button>
         <button id="secondary" style="--color:#000000" data-value="#000000" aria-label="Choose secondary color" aria-haspopup="dialog"></button>
       </div>
-      <button id="rotatecolor" aria-label="Swap colors" title="Swap colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M72.7108 15L72.7107 241" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M129.932 72L74.7071 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M15.7782 72L71.0036 16.7746" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M183 241L183 15" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M126.029 184L182.739 240.711" stroke-width="30" stroke-linecap="round" fill="none"/><path d="M239.682 184L182.971 240.711" stroke-width="30" stroke-linecap="round" fill="none"/></svg></button>
       <div id="colors"></div>
       <vr></vr>
       <div id="extra" type="draw">

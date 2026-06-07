@@ -169,7 +169,7 @@ nav div {
 }
 #hexcolor {
   width: 100%;
-  border-width: 1px;
+  margin-top: 12px !important;
   outline: none;
   box-sizing: border-box;
 }
@@ -343,7 +343,7 @@ main {
   margin: 0px !important;
 }
 
-#effects-panel {
+#effects-panel, #blend-panel {
   position: absolute;
   margin: 0px;
   transform: translateX(calc(-100% - 10px));

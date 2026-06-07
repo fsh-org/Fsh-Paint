@@ -214,8 +214,7 @@ let boxPicker = new iro.ColorPicker("#colorpicker", {
   width: 200,
   layoutDirection: window.matchMedia('(max-width: 700px)').matches?'vertical':'horizontal',
   color: '#ffffff',
-  borderWidth: 1,
-  borderColor: 'var(--text-2)',
+  borderWidth: 0,
   layout: [
     { component: iro.ui.Box },
     {
@@ -302,6 +301,15 @@ function applyeffects() {
   });
 }
 
+// Blend modes
+let AvailableBlends = ['normal','color','color-burn','color-dodge','darken','difference','exclusion','hard-light','hue','lighten','luminosity','multiply','overlay','saturation','screen','soft-light'];
+function applyblends() {
+  window.projectdata.layers.forEach(layer=>{
+    if (!layer.blendmode) return;
+    document.getElementById(layer.id).style.mixBlendMode = layer.blendmode;
+  });
+}
+
 // Layers
 const layerIcons = {
   draw: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.4876 170.991C59.9825 149.957 91.1969 147.111 112.19 164.656C133.182 182.201 136.017 213.475 118.523 234.51L116.663 236.746C99.8583 256.951 70.3108 260.66 49.0383 245.236L5.21509 213.462C1.65427 210.88 -0.307134 206.625 0.0393098 202.234C0.491684 196.503 4.75066 191.804 10.3987 190.805L18.7815 189.321C23.7638 188.44 28.3307 185.976 31.8088 182.294L42.4876 170.991ZM189.217 11.1699C204.048 -2.06402 226.313 -2.42185 241.57 10.3291C256.827 23.0803 260.481 45.1 250.161 62.1045L182.339 173.861C177.989 181.029 171.502 186.646 163.793 189.917L152.13 194.866C149.776 195.865 147.048 194.92 145.811 192.677L134.174 171.573C131.177 166.138 127.198 161.308 122.44 157.331L118.74 154.239C113.981 150.262 108.526 147.207 102.654 145.23L79.8518 137.551C77.4274 136.734 76.0086 134.214 76.5657 131.713L79.3254 119.322C81.1492 111.133 85.4936 103.725 91.7454 98.1465L189.217 11.1699Z"/></svg>',
@@ -329,7 +337,7 @@ new Sortable(LayerList, {
 let selectedLayer = '';
 window.createLayer = (type)=>{
   let id = Math.round(Math.random()*10**9).toString(36);
-  window.projectdata.layers.unshift({ id, type, name: 'New layer', hidden: false, effects: [] });
+  window.projectdata.layers.unshift({ id, type, name: 'New layer', hidden: false, effects: [], blendmode: 'normal' });
   if (type==='draw') {
     TransformArea.insertAdjacentHTML('beforeend', `<canvas id="${id}" width="${window.projectdata.width}" height="${window.projectdata.height}"></canvas>`);
   } else if (type==='shapes') {
@@ -426,6 +434,24 @@ window.effectsLayer = async(btn, id)=>{
   };
   show();
 };
+window.blendLayer = async(btn, id)=>{
+  let idx = window.projectdata.layers.findIndex(l=>l.id===id);
+  window.projectdata.layers[idx].blendmode ??= 'normal';
+  let panel = document.getElementById('blend-panel');
+  panel.show();
+  let bounds = btn.getBoundingClientRect();
+  panel.style.left = bounds.left+'px';
+  panel.style.top = bounds.top+'px';
+  panel.querySelector('select').innerHTML = AvailableBlends
+    .map(blend=>`<option value="${blend}">${blend.replace('-',' ')}</option>`)
+    .join('');
+  panel.querySelector('select').value = window.projectdata.layers[idx].blendmode;
+  panel.querySelector('select').onchange = (evt)=>{
+    window.projectdata.layers[idx].blendmode = evt.target.value;
+    applyblends();
+    trysave();
+  };
+};
 window.rasterLayer = async(id)=>{
   let idx = window.projectdata.layers.findIndex(l=>l.id===id);
   window.projectdata.layers[idx].type = 'draw';
@@ -460,6 +486,7 @@ function showLayers() {
       content: `<button onclick="window.renameLayer(document.querySelector('#l-${id} [data-namesec]'), '${id}', '${name}', '${type}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M72.5096 256C71.9573 256 71.5096 255.552 71.5096 255V238.941C71.5096 238.389 71.9573 237.941 72.5096 237.941H79.7382C84.9855 237.941 89.7557 237.463 94.0489 236.507C98.5806 235.312 102.158 233.041 104.782 229.695C107.644 226.109 109.075 220.932 109.075 214V17.9272H74.7295C67.8127 17.9272 62.3269 19.3614 58.2723 22.2297C54.2176 24.859 51.2362 28.4444 49.3281 32.986C47.42 37.2885 46.1082 42.0691 45.3927 47.3277L43.7065 61.8604C43.648 62.3647 43.2209 62.7451 42.7132 62.7451H26.0289C25.4655 62.7451 25.0133 62.2798 25.0293 61.7166L26.7611 0.971502C26.7766 0.430536 27.2195 0 27.7607 0H227.239C227.78 0 228.223 0.430535 228.239 0.971502L229.971 61.7166C229.987 62.2798 229.535 62.7451 228.971 62.7451H212.287C211.779 62.7451 211.352 62.3647 211.294 61.8604L209.607 47.3277C209.13 42.0691 207.819 37.2885 205.672 32.986C203.764 28.4444 200.782 24.859 196.728 22.2297C192.673 19.3614 187.068 17.9272 179.913 17.9272H145.209V214C145.209 221.41 146.521 225.866 149.145 229.69C151.768 233.275 155.346 235.315 159.878 236.51C164.41 237.705 169.299 237.941 174.546 237.941H181.775C182.327 237.941 182.775 238.389 182.775 238.941V255C182.775 255.552 182.327 256 181.775 256H72.5096Z"/></svg> Rename</button>
 <button onclick="window.dupeLayer('${id}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect x="88.5" y="88.5" width="155" height="155" rx="17.5" stroke-width="25" fill="none"/><rect width="180" height="180" rx="30"/></svg> Duplicate</button>
 <button onclick="window.effectsLayer(this, '${id}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M117.672 7.21582C121.197 -2.40484 134.803 -2.40478 138.328 7.21582L167.789 87.6162C167.891 87.8923 168.108 88.1107 168.384 88.2119L248.786 117.672C258.406 121.197 258.406 134.804 248.786 138.329L168.384 167.789C168.108 167.89 167.891 168.108 167.789 168.384L138.328 248.785C134.803 258.405 121.198 258.405 117.672 248.785L88.2123 168.384C88.1111 168.108 87.8926 167.89 87.6166 167.789L7.21521 138.329C-2.40516 134.804 -2.40504 121.197 7.21521 117.672L87.6166 88.2119C87.8927 88.1107 88.1111 87.8923 88.2123 87.6162L117.672 7.21582ZM89.9408 163.354C90.1363 163.451 90.3257 163.558 90.5082 163.675L90.2299 163.507C90.1351 163.453 90.0387 163.402 89.9408 163.354ZM8.69373 122.46C8.53563 122.525 8.38275 122.596 8.23474 122.671C8.38269 122.596 8.5357 122.526 8.69373 122.461V122.46Z"/></svg> Effects</button>
+<button onclick="window.blendLayer(this, '${id}')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><rect x="11" y="11" width="170" height="170" rx="85" stroke-width="22" fill="none"/><rect x="75" y="75" width="170" height="170" rx="85" stroke-width="22" fill="none"/><path d="M78 128C78 100.386 100.386 78 128 78H178V128C178 155.614 155.614 178 128 178H78V128Z"/></svg> Blend Mode</button>
 ${type==='shapes'?`<button onclick="window.rasterLayer('${id}')">Rasterize</button>`:''}
 <button onclick="window.deleteLayer('${id}')" style="color:var(--red-1)"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path d="M42.6776 7.32227C32.9145 -2.44063 17.0852 -2.44077 7.32214 7.32227C-2.44082 17.0853 -2.44069 32.9146 7.32214 42.6777L92.2616 127.617L7.32214 212.557C-2.44091 222.32 -2.44083 238.149 7.32214 247.912C17.0852 257.675 32.9145 257.675 42.6776 247.912L127.617 162.973L212.557 247.912C222.32 257.675 238.149 257.675 247.912 247.912C257.675 238.149 257.675 222.32 247.912 212.557L162.973 127.617L247.912 42.6777C257.675 32.9146 257.675 17.0853 247.912 7.32227C238.149 -2.44079 222.32 -2.44068 212.557 7.32227L127.617 92.2617L42.6776 7.32227Z"/></svg> Delete</button>`,
       interactive: true,
@@ -514,6 +541,7 @@ async function compositeLayers(preview=true, transparency=true) {
   for (const layer of layers) {
     if (layer.hidden) continue;
     ctx.filter = layer.effects?.length?layer.effects.map(effect=>`${effect.type}(${effect.value}${AvailableEffects[effect.type][0]})`).join(' '):'';
+    ctx.globalCompositeOperation = (layer.blendmode||'normal').replace('normal','source-over');
     if (layer.type==='draw') {
       ctx.drawImage(document.getElementById(layer.id), 0, 0, w, h, 0, 0, ws, hs);
     } else if (layer.type==='shapes') {
@@ -1004,6 +1032,7 @@ window.loadProject = (id)=>{
       window.selectLayer(window.projectdata.layers[0].id);
     }
     applyeffects();
+    applyblends();
     trysave();
   };
 };
