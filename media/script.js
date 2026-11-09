@@ -63,13 +63,10 @@ function isHWAOff() {
 }
 
 // Saving
-let lastsave = 0;
 let savededupe;
-function save() {
-  let now = Date.now();
-  lastsave = now;
-  window.projectdata.lastsave = now;
-  window.projectdata.layers = window.projectdata.layers.map(l=>{
+function save(light=false) {
+  window.projectdata.lastsave = Date.now();
+  if (!light) window.projectdata.layers = window.projectdata.layers.map(l=>{
     if (l.type==='draw') {
       l.data = document.getElementById(l.id).toDataURL();
     } else if (l.type==='shapes') {
@@ -97,11 +94,14 @@ function save() {
     reader.readAsDataURL(blob);
   });
 }
-function trysave() {
+let lightsave = true;
+function trysave(light=false) {
+  if (!light) lightsave = false;
   if (savededupe) clearTimeout(savededupe);
   savededupe = setTimeout(async()=>{
     savededupe = null;
-    save()
+    save(lightsave);
+    lightsave = true;
   }, 20);
 }
 window.trysave = trysave;
@@ -330,7 +330,7 @@ new Sortable(LayerList, {
     TransformArea.children[window.projectdata.layers.length-1-evt.newIndex][evt.oldIndex>evt.newIndex?'after':'before'](document.getElementById(window.projectdata.layers[evt.oldIndex].id));
     let item = window.projectdata.layers.splice(evt.oldIndex, 1)[0];
     window.projectdata.layers.splice(evt.newIndex, 0, item);
-    trysave();
+    trysave(true);
     showLayers();
   }
 });
@@ -345,12 +345,12 @@ window.createLayer = (type)=>{
   }
   if (LayerList.innerText.includes('No layers')) LayerList.innerText = '';
   LayerList.insertAdjacentHTML('afterbegin', `<div id="l-${id}"${id===selectedLayer?' selected':''}>
-  <button onclick="window.selectLayer('${id}')">${layerIcons[type]??''} <input class="new" value="New layer" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()"></button>
+  <button>${layerIcons[type]??''} <input class="new" value="New layer" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave(true)"></button>
 </div>`);
   LayerList.querySelector('input.new').focus();
   LayerList.querySelector('input.new').select();
   window.selectLayer(id);
-  trysave();
+  trysave(true);
 };
 window.selectLayer = (id)=>{
   let type = window.projectdata.layers.find(l=>l.id===id).type;
@@ -375,7 +375,7 @@ window.selectLayer = (id)=>{
 };
 window.renameLayer = (_this, id, name, type)=>{
   LayersArea.classList.remove('contracted')
-  _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave()">`;
+  _this.innerHTML = `${layerIcons[type]??''} <input class="new" value="${name}" maxlength="50" onkeydown="if(event.key==='Enter')this.blur();" onblur="window.projectdata.layers[window.projectdata.layers.findIndex(l=>l.id==='${id}')].name=this.value;window.showLayers();window.trysave(true)">`;
   LayerList.querySelector('input.new')?.focus();
   LayerList.querySelector('input.new')?.select();
 };
@@ -1065,14 +1065,10 @@ function showProjects() {
 
 // Start
 let dbRequest = indexedDB.open('data', 1);
-dbRequest.onupgradeneeded = function(e) {
-  let db = e.target.result;
-  if (!db.objectStoreNames.contains('projects')) {
-    db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
-  }
-  if (!db.objectStoreNames.contains('projectdata')) {
-    db.createObjectStore('projectdata', { keyPath: 'id', autoIncrement: false });
-  }
+dbRequest.onupgradeneeded = (evt)=>{
+  let db = evt.target.result;
+  if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+  if (!db.objectStoreNames.contains('projectdata')) db.createObjectStore('projectdata', { keyPath: 'id', autoIncrement: false });
 };
 const HelloModal = document.getElementById('hello');
 dbRequest.onsuccess = function(e) {
@@ -1094,6 +1090,10 @@ dbRequest.onsuccess = function(e) {
   HelloModal.querySelector('input').onchange = (evt)=>{
     let file = evt.target.files[0];
     if (!file) return;
+    // Other formats
+    let decoder = window.decoders[file.name.split('.').slice(-1)[0]];
+    if (decoder && decoder(file)) return;
+    // Regular images
     const reader = new FileReader();
     reader.onload = function() {
       let img = new Image();
