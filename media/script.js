@@ -70,7 +70,8 @@ function save(light=false) {
     if (l.type==='draw') {
       l.data = document.getElementById(l.id).toDataURL();
     } else if (l.type==='shapes') {
-      l.data = document.getElementById(l.id).innerHTML.replaceAll(' class="select"','').replaceAll(' onclick="window.svgclick(this)"','');
+      l.data = document.getElementById(l.id).innerHTML
+        .replaceAll(' class="select"','');
     }
     return l;
   });
@@ -192,7 +193,7 @@ window.setTool = (tol, _this)=>{
       ExtraTool.innerText = '';
       getFonts().then(fonts=>{
         ExtraTool.innerHTML = `<label>Size: <input id="e-tsize" type="number" min="1" value="${window.tooloptions.tsize}" oninput="window.tooloptions.tsize=this.value"></label>
-<label>Font: <select id="e-tfont" onchange="window.tooloptions.tfont=this.value">${fonts.map(f=>`<option${f===window.tooloptions.tfont?' selected':''}>${f}</option>`).join('')}</select></label>`;
+<label>Font: <select id="e-tfont" onchange="window.tooloptions.tfont=this.value">${fonts.map(f=>`<option style="font-family:${f}"${f===window.tooloptions.tfont?' selected':''}>${f}</option>`).join('')}</select></label>`;
       });
       break;
   }
@@ -356,7 +357,11 @@ window.selectLayer = (id)=>{
   let type = window.projectdata.layers.find(l=>l.id===id).type;
   document.getElementById('l-'+selectedLayer)?.removeAttribute('selected');
   document.getElementById('l-'+id).setAttribute('selected', true);
-  if (document.getElementById(selectedLayer)) document.getElementById(selectedLayer).style.pointerEvents = '';
+  if (document.getElementById(selectedLayer)) {
+    let last = document.getElementById(selectedLayer);
+    last.style.pointerEvents = '';
+    last.querySelector('.select')?.classList?.remove?.('select');
+  }
   selectedLayer = id;
   TransformArea.querySelectorAll('canvas').forEach(canvas=>canvas.onpointerdown=canvas.onpointermove=canvas.onpointerup=canvas.onpointercancel=()=>{});
   document.getElementById(id).style.pointerEvents = 'all';
@@ -667,37 +672,13 @@ function handleActiveCanvas(canvas) {
   };
 }
 window.svgactive = null;
-window.svgclick = (_this)=>{
-  if (tool!=='select') return;
-  window.svgactive = _this;
-  _this.parentElement.querySelector('.select')?.classList?.remove('select');
-  _this.classList.add('select');
-  primary.oninput = ()=>{
-    _this.setAttribute((_this.tagName.toLowerCase()==='line')?'stroke':'fill', primary.dataset.value);
-    trysave();
-  };
-  window.setColor(_this.getAttribute((_this.tagName.toLowerCase()==='line')?'stroke':'fill'));
-  switch(_this.tagName.toLowerCase()) {
-    case 'rect':
-      ExtraTool.innerHTML = `<label>Roundness: <input type="number" value="${_this.getAttribute('rx')}" min="0" oninput="window.svgactive.setAttribute('rx',this.value);window.trysave()"></label>`;
-      break;
-    case 'line':
-      ExtraTool.innerHTML = `<label>Width: <input type="number" value="${_this.getAttribute('stroke-width')}" min="1" oninput="window.svgactive.setAttribute('stroke-width',this.value);window.trysave()"></label>
-<label>Cap: <select id="e-cap" onchange="window.svgactive.setAttribute('stroke-linecap',this.value);window.trysave()"><option>round</option><option>butt</option><option>square</option></select></label>`;
-      ExtraTool.querySelector('select').value = _this.getAttribute('stroke-linecap');
-      break;
-    default:
-      ExtraTool.innerHTML = 'No options';
-      break;
-  }
-  FullArea.onclick = (evt)=>{
-    if (evt.target===_this) return;
-    FullArea.onclick = ()=>{};
-    primary.oninput = ()=>{};
-    _this.classList.remove('select');
-    ExtraTool.innerText = '';
-  };
-};
+function manageSvgElement(elem, svg, set) {
+  elem.setAttribute('fill', primary.dataset.value);
+  elem.setAttribute('stroke', 'none');
+  if (set.content) elem.textContent = set.content;
+  if (set.attributes) set.attributes.forEach(attr=>elem.setAttribute(attr[0], attr[1]));
+  svg.appendChild(elem);
+}
 function handleActiveSVG(svg) {
   let drag = false;
   let firstpos = [0,0];
@@ -705,11 +686,54 @@ function handleActiveSVG(svg) {
     if (tool==='shapes') {
       drag = true;
       firstpos = [evt.cx,evt.cy];
+    } else if (tool==='select') {
+      if (evt.target===svg) {
+        primary.oninput = ()=>{};
+        svg.querySelector('.select')?.classList?.remove?.('select');
+        ExtraTool.innerText = '';
+        return;
+      }
+      window.svgactive = evt.target;
+      evt.target.parentElement.querySelector('.select')?.classList?.remove('select');
+      evt.target.classList.add('select');
+      primary.oninput = ()=>{
+        evt.target.setAttribute((evt.target.tagName.toLowerCase()==='line')?'stroke':'fill', primary.dataset.value);
+        trysave();
+      };
+      window.setColor(evt.target.getAttribute((evt.target.tagName.toLowerCase()==='line')?'stroke':'fill'));
+      switch(evt.target.tagName.toLowerCase()) {
+        case 'rect':
+          ExtraTool.innerHTML = `<label>Roundness: <input type="number" value="${evt.target.getAttribute('rx')}" min="0" oninput="window.svgactive.setAttribute('rx',this.value);window.trysave()"></label>`;
+          break;
+        case 'line':
+          ExtraTool.innerHTML = `<label>Width: <input type="number" value="${evt.target.getAttribute('stroke-width')}" min="1" oninput="window.svgactive.setAttribute('stroke-width',this.value);window.trysave()"></label>
+<label>Cap: <select id="e-cap" onchange="window.svgactive.setAttribute('stroke-linecap',this.value);window.trysave()"><option>round</option><option>butt</option><option>square</option></select></label>`;
+          ExtraTool.querySelector('select').value = evt.target.getAttribute('stroke-linecap');
+          break;
+        case 'text':
+          ExtraTool.innerHTML = `<label>Size: <input type="number" value="${evt.target.getAttribute('font-size').replace('px','')}" min="1" oninput="window.svgactive.setAttribute('font-size',this.value+'px');window.trysave()"></label>`;
+          ExtraTool.querySelector('select').value = evt.target.getAttribute('stroke-linecap');
+          break;
+        default:
+          ExtraTool.innerHTML = 'No options';
+          break;
+      }
     } else if (tool==='text') {
-      let text = prompt('Text');
-      if (!text||text.length<1) return;
-      let b = svg.getBoundingClientRect();
-      svg.insertAdjacentHTML('beforeend', `<text onclick="window.svgclick(this)" fill="${primary.dataset.value}" stroke="none" x="${globalXToLocal(evt.cx,b)}" y="${globalYToLocal(evt.cy,b)}" font-family="${window.tooloptions.tfont}" font-size="${window.tooloptions.tsize}px" xfont-style="italic" xfont-weight="900">${text}</text>`);
+      let content = prompt('Text');
+      if (!content||content.length<1) return;
+      let bounds = svg.getBoundingClientRect();
+      let text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      manageSvgElement(text, svg, {
+        content,
+        attributes: [
+          ['x', globalXToLocal(evt.cx, bounds)],
+          ['y', globalYToLocal(evt.cy, bounds)],
+          ['font-family', window.tooloptions.tfont],
+          ['font-size', window.tooloptions.tsize+'px']/*,
+          ['font-style', 'italic'],
+          ['font-weight', '900']*/
+        ]
+      });
       trysave();
     } else if (tool==='image') {
       document.getElementById('tool-image-up').click();
@@ -725,26 +749,52 @@ function handleActiveSVG(svg) {
   window.cursorUp = (evt)=>{
     if (!drag) return;
     drag = false;
-    let b = svg.getBoundingClientRect();
-    let [x1, y1] = [globalXToLocal(firstpos[0],b), globalYToLocal(firstpos[1],b)];
-    let [x2, y2] = [globalXToLocal(evt.cx,b), globalYToLocal(evt.cy,b)];
+    let bounds = svg.getBoundingClientRect();
+    let [x1, y1] = [globalXToLocal(firstpos[0], bounds), globalYToLocal(firstpos[1], bounds)];
+    let [x2, y2] = [globalXToLocal(evt.cx, bounds), globalYToLocal(evt.cy, bounds)];
     let [x, y] = [Math.min(x1,x2), Math.min(y1,y2)];
     let [w, h] = [Math.abs(x2-x1), Math.abs(y2-y1)];
     if (w===0&&h===0) { w = 10; h = 10; }
     [w, h] = [Math.max(w,1), Math.max(h,1)];
-    let content = '';
+    const shapeToElem = { square: 'rect', circle: 'ellipse', line: 'line' };
+    let shape = document.createElementNS('http://www.w3.org/2000/svg', shapeToElem[window.tooloptions.shape]);
     switch(window.tooloptions.shape) {
       case 'square':
-        content = `<rect onclick="window.svgclick(this)" fill="${primary.dataset.value}" x="${x}" y="${y}" width="${w}" height="${h}" rx="0" stroke="none"></rect>`;
+        manageSvgElement(shape, svg, {
+          attributes: [
+            ['x', x],
+            ['y', y],
+            ['width', w],
+            ['height', h],
+            ['rx', 0]
+          ]
+        });
         break;
       case 'circle':
-        content = `<ellipse onclick="window.svgclick(this)" fill="${primary.dataset.value}" cx="${x+Math.floor(w/2)}" cy="${y+Math.floor(h/2)}" rx="${Math.floor(w/2)}" ry="${Math.floor(h/2)}" stroke="none"></ellipse>`;
+        manageSvgElement(shape, svg, {
+          attributes: [
+            ['cx', x+Math.floor(w/2)],
+            ['cy', y+Math.floor(h/2)],
+            ['rx', Math.floor(w/2)],
+            ['ry', Math.floor(h/2)]
+          ]
+        });
         break;
       case 'line':
-        content = `<line onclick="window.svgclick(this)" stroke="${primary.dataset.value}" stroke-width="10" stroke-linecap="round" x1="${globalXToLocal(firstpos[0],b)}" y1="${globalYToLocal(firstpos[1],b)}" x2="${globalXToLocal(evt.cx,b)}" y2="${globalYToLocal(evt.cy,b)}" fill="none"></line>`;
+        manageSvgElement(shape, svg, {
+          attributes: [
+            ['x1', x1],
+            ['y1', y1],
+            ['x2', x2],
+            ['y2', y2],
+            ['fill', 'none'],
+            ['stroke', primary.dataset.value],
+            ['stroke-width', 10],
+            ['stroke-linecap', 'round']
+          ]
+        });
         break;
     }
-    svg.insertAdjacentHTML('beforeend', content);
     trysave();
   };
 }
@@ -1014,15 +1064,15 @@ window.loadProject = (id)=>{
         TransformArea.insertAdjacentHTML('afterbegin', `<svg id="${l.id}" width="${window.projectdata.width}" height="${window.projectdata.height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${window.projectdata.width} ${window.projectdata.height}"${l.hidden?' style="opacity:0"':''}></svg>`);
       }
       if (l.data) {
+        let surface = document.getElementById(l.id);
         if (l.type==='draw') {
           let img = new Image();
           img.onload = ()=>{
-            document.getElementById(l.id).getContext('2d').drawImage(img, 0, 0);
+            surface.getContext('2d').drawImage(img, 0, 0);
           };
           img.src = l.data;
         } else if (l.type==='shapes') {
-          document.getElementById(l.id).innerHTML = l.data;
-          Array.from(document.getElementById(l.id).children).forEach(elem=>elem.setAttribute('onclick','window.svgclick(this)'));
+          surface.innerHTML = l.data;
         }
       }
     });

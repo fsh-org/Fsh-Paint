@@ -229,10 +229,8 @@ main {
   image-rendering: pixelated;
 }
 #transforms > svg .select {
-  stroke: var(--text-1);
-}
-#transforms > svg .select:not(line) {
-  stroke-width: 5px;
+  outline: 3px solid var(--bg-4);
+  outline-offset: 1px;
 }
 #transforms > svg > * {
   transition: fill 500ms, stroke 500ms;
