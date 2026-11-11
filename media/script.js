@@ -751,8 +751,8 @@ function handleActiveSVG(svg) {
   window.cursorMove = (evt)=>{
     if (!drag||tool!=='select'||!window.svgactive) return;
     let type = window.svgactive.tagName.toLowerCase();
-    let xv = (type==='rect'||type==='text')?'x':(type==='ellipse'?'cx':(type==='line'?'x1':''));
-    let yv = (type==='rect'||type==='text')?'y':(type==='ellipse'?'cy':(type==='line'?'y1':''));
+    let xv = type==='ellipse'?'cx':(type==='line'?'x1':'x');
+    let yv = type==='ellipse'?'cy':(type==='line'?'y1':'y');
     let bounds = svg.getBoundingClientRect();
     window.svgactive.setAttribute(xv, Number(window.svgactive.getAttribute(xv))+(globalXToLocal(evt.cx, bounds)-globalXToLocal(firstpos[0], bounds)));
     window.svgactive.setAttribute(yv, Number(window.svgactive.getAttribute(yv))+(globalYToLocal(evt.cy, bounds)-globalYToLocal(firstpos[1], bounds)));
@@ -822,13 +822,26 @@ function putImage(file, oevt) {
   const reader = new FileReader();
   reader.onload = function() {
     let layer = window.projectdata.layers.find(l=>l.id===selectedLayer);
-    let b = document.getElementById(layer.id).getBoundingClientRect();
+    let layerelem = document.getElementById(layer.id);
+    let b = layerelem.getBoundingClientRect();
+    let x = globalXToLocal(oevt.cx,b)||0;
+    let y = globalYToLocal(oevt.cy,b)||0;
     let img = new Image();
     img.onload = ()=>{
       if (layer.type==='draw') {
-        document.getElementById(layer.id).getContext('2d').drawImage(img, globalXToLocal(oevt.cx,b), globalYToLocal(oevt.cy,b));
+        layerelem.getContext('2d').drawImage(img, x, y);
       } else if (layer.type==='shapes') {
-        document.getElementById(layer.id).insertAdjacentHTML('afterbegin', `<image href="${reader.result}" width="${Math.round(img.width/window.projectdata.width*b.width)}" height="${Math.round(img.height/window.projectdata.height*b.height)}" x="${globalXToLocal(oevt.cx,b)}" y="${globalYToLocal(oevt.cy,b)}"/>`);
+        let scale = (img.width>layerelem.width.baseVal.value||img.height>layerelem.height.baseVal.value)?Math.min(layerelem.width.baseVal.value/img.width,layerelem.height.baseVal.value/img.height):1;
+        let image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+        manageSvgElement(image, layerelem, {
+          attributes: [
+            ['x', x],
+            ['y', y],
+            ['width', Math.round(img.width*scale)],
+            ['height', Math.round(img.height*scale)],
+            ['href', reader.result]
+          ]
+        });
       }
       trysave();
     };
