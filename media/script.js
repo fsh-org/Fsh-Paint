@@ -121,29 +121,24 @@ function setActions() {
           break;
         case 'rotate':
           rotate += Math.PI/2;
-          transform({ pointerType: 'touch' });
           break;
         case 'crotate':
           rotate -= Math.PI/2;
-          transform({ pointerType: 'touch' });
           break;
         case 'hflip':
           hflip = !hflip;
-          transform({ pointerType: 'touch' });
           break;
         case 'vflip':
           vflip = !vflip;
-          transform({ pointerType: 'touch' });
           break;
         case 'pzoom':
           zoom += 0.1;
-          transform({ pointerType: 'touch' });
           break;
         case 'mzoom':
           zoom -= 0.1;
-          transform({ pointerType: 'touch' });
           break;
       }
+      transform();
     };
   });
 }
@@ -360,7 +355,10 @@ window.selectLayer = (id)=>{
   if (document.getElementById(selectedLayer)) {
     let last = document.getElementById(selectedLayer);
     last.style.pointerEvents = '';
+    primary.oninput = ()=>{};
     last.querySelector('.select')?.classList?.remove?.('select');
+    ExtraTool.innerText = '';
+    window.svgactive = null;
   }
   selectedLayer = id;
   TransformArea.querySelectorAll('canvas').forEach(canvas=>canvas.onpointerdown=canvas.onpointermove=canvas.onpointerup=canvas.onpointercancel=()=>{});
@@ -691,6 +689,12 @@ function handleActiveSVG(svg) {
         primary.oninput = ()=>{};
         svg.querySelector('.select')?.classList?.remove?.('select');
         ExtraTool.innerText = '';
+        window.svgactive = null;
+        return;
+      }
+      if (evt.target.classList.contains('select')) {
+        drag = true;
+        firstpos = [evt.cx,evt.cy];
         return;
       }
       window.svgactive = evt.target;
@@ -712,7 +716,6 @@ function handleActiveSVG(svg) {
           break;
         case 'text':
           ExtraTool.innerHTML = `<label>Size: <input type="number" value="${evt.target.getAttribute('font-size').replace('px','')}" min="1" oninput="window.svgactive.setAttribute('font-size',this.value+'px');window.trysave()"></label>`;
-          ExtraTool.querySelector('select').value = evt.target.getAttribute('stroke-linecap');
           break;
         default:
           ExtraTool.innerHTML = 'No options';
@@ -745,10 +748,25 @@ function handleActiveSVG(svg) {
       };
     }
   };
-  window.cursorMove = ()=>{};
+  window.cursorMove = (evt)=>{
+    if (!drag||tool!=='select'||!window.svgactive) return;
+    let type = window.svgactive.tagName.toLowerCase();
+    let xv = (type==='rect'||type==='text')?'x':(type==='ellipse'?'cx':(type==='line'?'x1':''));
+    let yv = (type==='rect'||type==='text')?'y':(type==='ellipse'?'cy':(type==='line'?'y1':''));
+    let bounds = svg.getBoundingClientRect();
+    window.svgactive.setAttribute(xv, Number(window.svgactive.getAttribute(xv))+(globalXToLocal(evt.cx, bounds)-globalXToLocal(firstpos[0], bounds)));
+    window.svgactive.setAttribute(yv, Number(window.svgactive.getAttribute(yv))+(globalYToLocal(evt.cy, bounds)-globalYToLocal(firstpos[1], bounds)));
+    if (type==='line') {
+      window.svgactive.setAttribute('x2', Number(window.svgactive.getAttribute('x2'))+(globalXToLocal(evt.cx, bounds)-globalXToLocal(firstpos[0], bounds)));
+      window.svgactive.setAttribute('y2', Number(window.svgactive.getAttribute('y2'))+(globalYToLocal(evt.cy, bounds)-globalYToLocal(firstpos[1], bounds)));
+    }
+    firstpos = [evt.cx,evt.cy];
+    trysave();
+  };
   window.cursorUp = (evt)=>{
     if (!drag) return;
     drag = false;
+    if (tool!=='shapes') return;
     let bounds = svg.getBoundingClientRect();
     let [x1, y1] = [globalXToLocal(firstpos[0], bounds), globalYToLocal(firstpos[1], bounds)];
     let [x2, y2] = [globalXToLocal(evt.cx, bounds), globalYToLocal(evt.cy, bounds)];
@@ -856,7 +874,7 @@ let transform = (evt)=>{
   // Canvas
   TransformArea.style.transform = `translate${woh?'Y':'X'}(-50%) scale(${zoom}) translate(${x}px, ${y}px) rotate(${rotate}rad) ${hflip?'rotateY(180deg)':''} ${vflip?'rotateX(180deg)':''}`;
   // Cursor
-  if (evt.pointerType==='touch') return;
+  if (!evt||evt.pointerType==='touch') return;
   let b = TransformArea.getBoundingClientRect();
   let pp = rotateAround(evt.clientX, evt.clientY, b.left+b.width/2, b.top+b.height/2, -rotate);
   Cursor.style.left = ((pp.x-b.left)/zoom).toFixed(2)+'px';
@@ -920,6 +938,17 @@ function mzinter() {
     if (['input','select'].includes(document.activeElement.tagName.toLowerCase())) return;
     let amount = (evt.shiftKey?50:(evt.altKey?5:10));
     switch(evt.key) {
+      // Save & Export
+      case 's':
+        if (!evt.ctrlKey) return;
+        evt.preventDefault();
+        trysave();
+        break;
+      case 'e':
+        if (!evt.ctrlKey) return;
+        evt.preventDefault();
+        document.getElementById('export').showModal();
+        break;
       // Move
       case 'ArrowUp':
         y += amount;
@@ -933,7 +962,7 @@ function mzinter() {
       case 'ArrowRight':
         x -= amount;
         break;
-      // Zoom
+      // Zoom, Rotate, Flip
       case '+':
         if (!evt.ctrlKey) return;
         evt.preventDefault();
@@ -952,6 +981,18 @@ function mzinter() {
         y = 0;
         zoom = 1;
         rotate = 0;
+        hflip = false;
+        vflip = false;
+        break;
+      case 'R':
+        evt.preventDefault();
+        rotate += Math.PI/(evt.altKey?4:2);
+        break;
+      case 'H':
+        hflip = !hflip;
+        break;
+      case 'V':
+        vflip = !vflip;
         break;
       // Del
       case 'Backspace':
@@ -964,7 +1005,7 @@ function mzinter() {
       default:
         return;
     }
-    transform(evt);
+    transform();
   };
   // Touch stuff
   TransformArea.onpointerdown = (evt)=>{

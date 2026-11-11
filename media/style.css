@@ -229,11 +229,9 @@ main {
   image-rendering: pixelated;
 }
 #transforms > svg .select {
+  cursor: move;
   outline: 3px solid var(--bg-4);
   outline-offset: 1px;
-}
-#transforms > svg > * {
-  transition: fill 500ms, stroke 500ms;
 }
 #cursor {
   position: absolute;
